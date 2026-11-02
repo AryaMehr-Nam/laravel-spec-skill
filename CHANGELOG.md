@@ -32,7 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `validation-rules.md`: Complete catalog of all 29 validation rules (`STRUC`, `UNIQ`, `REL`, `AUTH`, `SM`, `NUM`, `ENUM`, `DAG`, `SEC`) with severities, trigger conditions, examples, and fix hints.
     - `filament-notes.md`: Filament v3/v4 panel providers, resources, form/table schemas, relation managers, policies, and ownership query scoping.
     - `build-protocol.md`: Step-by-step TDD build protocol, milestone lifecycle, Red-Green-Refactor, Pint/Larastan QA, and `spec/PROGRESS.md` checkpoint format.
-- **Milestone 5**: Multi-agent installer and packaging test suite:
-  - `scripts/install.py`: Standalone, zero-dependency CLI installer supporting Claude Code, Cursor, OpenAI Codex CLI, and Antigravity across project-local and user-global targets with non-destructive pointer block injection (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`) and clean rollback via `--uninstall`.
-  - `tests/test_installer.py`: 21 automated tests verifying multi-agent targets, idempotent re-installation, non-destructive pointer block injection and clean removal, pre-existing directory backup and restore, and CLI subprocess execution.
+- **Milestone 5**: Multi-agent installer, root CLI forwarding entrypoints, and packaging test suite:
+  - `scripts/install.py`: Standalone, zero-dependency CLI installer supporting Claude Code, Cursor, OpenAI Codex CLI, and Antigravity across project-local and user-global targets with non-destructive pointer block injection (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`), data loss defense on corrupted manifests, and clean rollback via `--uninstall`.
+  - Root CLI forwarding scripts: `scripts/validate_spec.py`, `scripts/render_docs.py`, `scripts/render_commands.py`, and `scripts/init_spec.py` for direct CLI execution from repository root.
+  - `tests/test_installer.py`: 27 automated tests verifying multi-agent targets, idempotent re-installation, non-destructive pointer block injection and clean removal, pre-existing directory backup and restore, corrupted manifest protection, middle pointer removal, and CLI subprocess execution.
 
