@@ -42,8 +42,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/example/laravel-spec-skill"
-Repository = "https://github.com/example/laravel-spec-skill"
+Homepage = "https://github.com/AryaMehr-Nam/laravel-spec-skill"
+Repository = "https://github.com/AryaMehr-Nam/laravel-spec-skill"
 
 [tool.ruff]
 line-length = 100

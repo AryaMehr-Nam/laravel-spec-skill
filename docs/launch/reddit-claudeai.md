@@ -48,13 +48,13 @@ To fix this, we built **`laravel-spec-skill`** — an open-source [Agent Skill](
 ### Quickstart
 ```bash
 # Install via Agent Skills CLI
-npx skills add github:example/laravel-spec-skill
+npx skills add github:AryaMehr-Nam/laravel-spec-skill
 
 # Or install with the bundled installer
-git clone https://github.com/example/laravel-spec-skill.git
+git clone https://github.com/AryaMehr-Nam/laravel-spec-skill.git
 python laravel-spec-skill/scripts/install.py --target claude
 ```
 
-Repo: https://github.com/example/laravel-spec-skill (MIT Licensed)
+Repo: https://github.com/AryaMehr-Nam/laravel-spec-skill (MIT Licensed)
 
 Would love your thoughts, feedback, and what other validation rules you'd like to see!

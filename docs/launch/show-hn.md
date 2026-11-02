@@ -8,7 +8,7 @@ Hi HN,
 
 We built **laravel-spec**, an open-source toolchain and agent skill that compiles natural-language project descriptions into machine-validated specifications (`spec/spec.json`), enforces 29 structural and architectural invariants, and drives an iterative test-first build for Laravel 11/12 and Filament v3/v4 applications.
 
-GitHub: https://github.com/example/laravel-spec-skill
+GitHub: https://github.com/AryaMehr-Nam/laravel-spec-skill
 
 ### Why we built this
 
@@ -50,7 +50,7 @@ We bundle 4 modular presets:
 ### Quick Try
 
 ```bash
-git clone https://github.com/example/laravel-spec-skill.git
+git clone https://github.com/AryaMehr-Nam/laravel-spec-skill.git
 cd laravel-spec-skill
 
 # Run the 29-rule validator on the included multi-vendor marketplace example:

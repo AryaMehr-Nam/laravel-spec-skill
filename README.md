@@ -1,9 +1,9 @@
 # laravel-spec-skill
 
-[![CI](https://github.com/example/laravel-spec-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/example/laravel-spec-skill/actions/workflows/ci.yml)
+[![CI](https://github.com/AryaMehr-Nam/laravel-spec-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/AryaMehr-Nam/laravel-spec-skill/actions/workflows/ci.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Release](https://img.shields.io/badge/release-v0.1.0-emerald.svg)](https://github.com/example/laravel-spec-skill/releases/tag/v0.1.0)
+[![Release](https://img.shields.io/badge/release-v0.1.0-emerald.svg)](https://github.com/AryaMehr-Nam/laravel-spec-skill/releases/tag/v0.1.0)
 [![Agent Skills](https://img.shields.io/badge/agent--skills-compliant-purple.svg)](https://github.com/agentskills/agentskills)
 
 > **Spec-driven development skill for AI agents that turns plain-language requirements into machine-validated specifications and test-driven builds for Laravel 11/12 and Filament v3/v4 applications.**
@@ -11,6 +11,8 @@
 ---
 
 ## 10-Second Demo & Recording Script
+
+![laravel-spec-skill Demo](demo.gif)
 
 Watch an AI agent discover requirements, compile `spec/spec.json`, validate 29 architectural invariants with zero errors, generate 10 modular docs + dry-run Artisan commands, and pause at the Phase 4 review gate:
 
@@ -41,7 +43,7 @@ You can record the exact terminal demo into `demo.gif` using [VHS](https://githu
 
 ```bash
 # 1. Clone and navigate to repo
-git clone https://github.com/example/laravel-spec-skill.git
+git clone https://github.com/AryaMehr-Nam/laravel-spec-skill.git
 cd laravel-spec-skill
 
 # 2. Inspect and validate one of the production examples (29 rules)
@@ -67,14 +69,14 @@ Install `laravel-spec-skill` into your agentic workspace in seconds:
 ### Option A: Via `npx skills` (Standard Agent Skills CLI)
 
 ```bash
-npx skills add github:example/laravel-spec-skill
+npx skills add github:AryaMehr-Nam/laravel-spec-skill
 ```
 
 ### Option B: Via Bundled Zero-Dependency Installer
 
 ```bash
 # Command 1: Clone repo
-git clone https://github.com/example/laravel-spec-skill.git
+git clone https://github.com/AryaMehr-Nam/laravel-spec-skill.git
 
 # Command 2: Install into all detected agent workspaces (Antigravity, Claude Code, Cursor, Codex)
 python laravel-spec-skill/scripts/install.py --target all
@@ -214,6 +216,24 @@ Detailed documentation with trigger conditions, examples, and fix hints is avail
 - **What it does**: Provides dual-mode architectural patterns: Single-Database row-level tenant scoping (via `tenant_id`, Filament panel tenancy, and global Eloquent query scopes) and Multi-Database complete database isolation using `stancl/tenancy`.
 - **When to use**: Multi-tenant B2B SaaS platforms and white-label portals.
 - **Reference**: [`skills/laravel-spec/references/presets/multi-tenant.md`](skills/laravel-spec/references/presets/multi-tenant.md)
+
+---
+
+## Test Suite & Verification
+
+![Test Suite: 158 Passed](tests.png)
+
+Every rule, script, template, and preset is comprehensively tested across Python 3.10, 3.11, 3.12, and 3.13:
+- **158 passing unit & integration tests** in under 6 seconds.
+- **28 deliberate error fixtures** ensuring every validation rule triggers with precise JSON paths and fix hints.
+- **Deterministic SHA-256 validation** guaranteeing byte-for-byte doc rendering across runs.
+- **Ruff linter and formatter**: 0 errors, 100% compliant.
+
+Run tests locally:
+```bash
+python -m pytest -v
+python -m ruff check .
+```
 
 ---
 

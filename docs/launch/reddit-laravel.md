@@ -58,13 +58,13 @@ The repository includes complete, fully validated reference specifications:
 - `examples/crm/`: Enterprise CRM with sales lead lifecycles, customer scoping, and audit logs.
 
 ```bash
-git clone https://github.com/example/laravel-spec-skill.git
+git clone https://github.com/AryaMehr-Nam/laravel-spec-skill.git
 cd laravel-spec-skill
 
 # Run validation on the marketplace example
 python scripts/validate_spec.py examples/marketplace/spec.json --strict
 ```
 
-Repo: https://github.com/example/laravel-spec-skill (MIT License)
+Repo: https://github.com/AryaMehr-Nam/laravel-spec-skill (MIT License)
 
 We'd love to hear your feedback, bug reports, and ideas for additional validation rules!
