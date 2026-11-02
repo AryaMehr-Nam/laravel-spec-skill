@@ -1,0 +1,36 @@
+{
+  "project": {
+    "name": "Laravel Application",
+    "description": "Enterprise application built with Laravel and Filament",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3",
+    "presets": []
+  },
+  "roles": [
+    {
+      "name": "super-admin",
+      "description": "Full system administrator with unconstrained access",
+      "is_super_admin": true
+    }
+  ],
+  "models": [],
+  "policies": [],
+  "filament": {
+    "panels": []
+  },
+  "integrations": [],
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Foundation & Authentication",
+      "depends_on": [],
+      "scope": [],
+      "acceptance": [
+        "Core database schema and authentication are functional",
+        "Initial test suite passes with baseline coverage"
+      ]
+    }
+  ]
+}

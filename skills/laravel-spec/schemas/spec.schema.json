@@ -1,0 +1,476 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/laravel-spec-skill/main/skills/laravel-spec/schemas/spec.schema.json",
+  "title": "Laravel Filament Specification Schema",
+  "description": "Formal schema defining the structure of spec/spec.json for Laravel and Filament applications.",
+  "type": "object",
+  "required": [
+    "project",
+    "roles",
+    "models",
+    "policies",
+    "filament",
+    "milestones"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "project": {
+      "type": "object",
+      "required": [
+        "name",
+        "description",
+        "locale",
+        "timezone",
+        "laravel_version",
+        "filament_version"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Project name (e.g., 'Marketplace Hub', 'CRM Core')"
+        },
+        "description": {
+          "type": "string",
+          "description": "Brief description of the application scope and domain"
+        },
+        "locale": {
+          "type": "string",
+          "description": "Application primary locale (e.g., 'en', 'fa')"
+        },
+        "timezone": {
+          "type": "string",
+          "description": "Application primary timezone (e.g., 'UTC', 'Asia/Tehran')"
+        },
+        "laravel_version": {
+          "type": "string",
+          "description": "Target Laravel version (e.g., '11', '12', '13')"
+        },
+        "filament_version": {
+          "type": "string",
+          "description": "Target Filament version (e.g., 'v3', 'v4')"
+        },
+        "presets": {
+          "type": "array",
+          "description": "List of active presets (e.g., 'rtl-fa', 'iran-payments', 'otp-login', 'multi-tenant')",
+          "items": {
+            "type": "string"
+          }
+        },
+        "audit_log": {
+          "type": ["boolean", "object"],
+          "description": "Project-wide audit logging declaration for PII compliance"
+        }
+      }
+    },
+    "roles": {
+      "type": "array",
+      "description": "Declared user roles in the system",
+      "items": {
+        "type": "object",
+        "required": ["name", "description"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Unique role identifier (e.g., 'super-admin', 'admin', 'vendor', 'customer')"
+          },
+          "description": {
+            "type": "string",
+            "description": "Explanation of role privileges and duties"
+          },
+          "is_super_admin": {
+            "type": "boolean",
+            "description": "Explicit flag indicating super-admin bypass/all-access privileges"
+          }
+        }
+      }
+    },
+    "models": {
+      "type": "array",
+      "description": "Eloquent models and database tables",
+      "items": {
+        "type": "object",
+        "required": ["name", "table", "fields"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "PascalCase model name (e.g., 'User', 'Product', 'Order')"
+          },
+          "table": {
+            "type": "string",
+            "description": "Snake_case database table name (e.g., 'users', 'products', 'orders')"
+          },
+          "soft_deletes": {
+            "type": "boolean",
+            "description": "Whether the model uses SoftDeletes trait and soft delete column"
+          },
+          "timestamps": {
+            "type": "boolean",
+            "description": "Whether created_at and updated_at timestamps are enabled"
+          },
+          "fields": {
+            "type": "array",
+            "description": "Attributes and columns of the model",
+            "items": {
+              "type": "object",
+              "required": ["name", "type"],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Field / column name in snake_case"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Column data type (e.g. 'string', 'text', 'integer', 'bigInteger', 'decimal', 'boolean', 'enum', 'date', 'datetime', 'file', 'image')"
+                },
+                "nullable": {
+                  "type": "boolean",
+                  "description": "Whether column accepts NULL values"
+                },
+                "default": {
+                  "description": "Default column value"
+                },
+                "unique": {
+                  "type": "boolean",
+                  "description": "Unique database index flag"
+                },
+                "index": {
+                  "type": "boolean",
+                  "description": "Database index flag"
+                },
+                "enum_values": {
+                  "type": "array",
+                  "description": "Allowed enum values if type is 'enum'",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "foreign": {
+                  "type": "object",
+                  "description": "Foreign key constraint declaration",
+                  "required": ["model"],
+                  "properties": {
+                    "model": {
+                      "type": "string",
+                      "description": "Target model name referenced by foreign key"
+                    },
+                    "on_delete": {
+                      "type": "string",
+                      "enum": ["cascade", "restrict", "set null", "no action", "nullOnDelete", "cascadeOnDelete"],
+                      "description": "Foreign key on delete behavior"
+                    },
+                    "foreign_key": {
+                      "type": "string",
+                      "description": "Explicit foreign key column name (defaults to target_model_id)"
+                    }
+                  }
+                },
+                "pii": {
+                  "type": "boolean",
+                  "description": "Personally Identifiable Information flag triggering audit logging requirement"
+                },
+                "precision": {
+                  "type": "integer",
+                  "description": "Total number of digits for decimal column"
+                },
+                "scale": {
+                  "type": "integer",
+                  "description": "Number of decimal digits after decimal point"
+                },
+                "max_size_kb": {
+                  "type": "integer",
+                  "description": "Maximum allowed upload size in kilobytes for file/image columns"
+                },
+                "allowed_mimes": {
+                  "type": "array",
+                  "description": "Allowed MIME types or file extensions for upload columns",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "relations": {
+            "type": "array",
+            "description": "Eloquent relationships with other models",
+            "items": {
+              "type": "object",
+              "required": ["type", "model", "name"],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "hasOne",
+                    "hasMany",
+                    "belongsTo",
+                    "belongsToMany",
+                    "morphTo",
+                    "morphMany",
+                    "morphOne",
+                    "hasManyThrough"
+                  ]
+                },
+                "model": {
+                  "type": "string",
+                  "description": "Target model name"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Relation method name (e.g. 'orders', 'user')"
+                },
+                "inverse": {
+                  "type": "string",
+                  "description": "Name of the inverse relation on the target model"
+                },
+                "foreign_key": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "states": {
+            "type": "object",
+            "description": "Workflow state machine definition for the model",
+            "required": ["field", "transitions"],
+            "properties": {
+              "field": {
+                "type": "string",
+                "description": "Column holding the state value"
+              },
+              "initial": {
+                "type": "string",
+                "description": "Initial state value"
+              },
+              "final": {
+                "type": "array",
+                "description": "Terminal / final states that have no outgoing transitions",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "transitions": {
+                "type": "array",
+                "description": "Permitted state transitions",
+                "items": {
+                  "type": "object",
+                  "required": ["from", "to", "roles"],
+                  "properties": {
+                    "from": {
+                      "type": "string",
+                      "description": "Starting state (or '*' for any state)"
+                    },
+                    "to": {
+                      "type": "string",
+                      "description": "Destination state"
+                    },
+                    "roles": {
+                      "type": "array",
+                      "description": "List of role names authorized to trigger this transition",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "policies": {
+      "type": "array",
+      "description": "Authorization policies mapping models to roles and abilities",
+      "items": {
+        "type": "object",
+        "required": ["model", "ownership", "abilities"],
+        "properties": {
+          "model": {
+            "type": "string",
+            "description": "Target model name"
+          },
+          "ownership": {
+            "type": "string",
+            "pattern": "^(none|tenant|owner_field:[a-zA-Z0-9_]+)$",
+            "description": "Ownership scoping strategy ('none', 'tenant', or 'owner_field:<field_name>')"
+          },
+          "abilities": {
+            "type": "object",
+            "required": ["viewAny", "view", "create", "update", "delete"],
+            "properties": {
+              "viewAny": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "view": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "create": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "update": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "delete": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "restore": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "forceDelete": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            },
+            "additionalProperties": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "filament": {
+      "type": "object",
+      "description": "Filament admin and customer panel declarations",
+      "required": ["panels"],
+      "properties": {
+        "panels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "path", "roles", "resources"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Filament Panel ID (e.g., 'admin', 'vendor', 'app')"
+              },
+              "path": {
+                "type": "string",
+                "description": "URL path prefix for the panel (e.g., 'admin', 'vendor')"
+              },
+              "roles": {
+                "type": "array",
+                "description": "Roles permitted to access this panel",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "resources": {
+                "type": "array",
+                "description": "Filament resources configured in this panel",
+                "items": {
+                  "type": "object",
+                  "required": ["model"],
+                  "properties": {
+                    "model": {
+                      "type": "string",
+                      "description": "Associated Eloquent model name"
+                    },
+                    "navigation": {
+                      "description": "Navigation group, icon, or order specification"
+                    },
+                    "form": {
+                      "type": "array",
+                      "description": "Form schema fields"
+                    },
+                    "table": {
+                      "description": "Table column configuration and query scoping",
+                      "type": ["object", "array"]
+                    },
+                    "filters": {
+                      "type": "array",
+                      "description": "Table filters"
+                    },
+                    "actions": {
+                      "type": "array",
+                      "description": "Header and record actions"
+                    },
+                    "relation_managers": {
+                      "type": "array",
+                      "description": "Relation managers attached to resource pages"
+                    }
+                  }
+                }
+              },
+              "pages": {
+                "type": "array",
+                "description": "Custom Filament pages"
+              },
+              "widgets": {
+                "type": "array",
+                "description": "Dashboard and resource widgets"
+              }
+            }
+          }
+        }
+      }
+    },
+    "integrations": {
+      "type": "array",
+      "description": "Third-party services, queues, and gateways",
+      "items": {
+        "type": "object",
+        "required": ["name", "kind"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Integration service name (e.g. 'zarinpal', 'kavenegar', 's3')"
+          },
+          "kind": {
+            "type": "string",
+            "description": "Integration kind ('payments', 'sms', 'storage', 'queue', 'mail', 'audit_log', 'audit', 'other')"
+          },
+          "config_notes": {
+            "description": "Configuration details and environment variable notes"
+          }
+        }
+      }
+    },
+    "milestones": {
+      "type": "array",
+      "description": "Ordered milestone plan for incremental TDD build protocol",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "depends_on", "scope", "acceptance"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Milestone identifier (e.g., 'M0', 'M1', 'M2')"
+          },
+          "title": {
+            "type": "string",
+            "description": "Milestone title"
+          },
+          "depends_on": {
+            "type": "array",
+            "description": "IDs of prerequisite milestones",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope": {
+            "type": "array",
+            "description": "Models, panels, or feature modules built in this milestone",
+            "items": {
+              "type": "string"
+            }
+          },
+          "acceptance": {
+            "type": "array",
+            "description": "Observable acceptance criteria (minimum 2 required)",
+            "minItems": 2,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}
