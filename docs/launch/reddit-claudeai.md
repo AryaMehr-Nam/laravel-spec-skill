@@ -41,8 +41,8 @@ To fix this, we built **`laravel-spec-skill`** — an open-source [Agent Skill](
 
 ### Key Features
 - **Zero Runtime Dependencies**: The validator, doc renderer, and command generator use Python 3.10+ standard library only.
-- **Battle-Tested Presets**: Bundles architectural presets for Persian RTL (`rtl-fa`), Iranian payment gateways with idempotency keys (`iran-payments`), SMS OTP passwordless auth (`otp-login`), and SaaS multi-tenancy (`multi-tenant`).
-- **Complete Reference Examples**: Includes full specifications for a multi-vendor marketplace and an enterprise CRM.
+- **Architectural Presets**: Bundles architectural presets for Persian RTL (`rtl-fa`), Iranian payment gateways with idempotency keys (`iran-payments`), SMS OTP passwordless auth (`otp-login`), and SaaS multi-tenancy (`multi-tenant`).
+- **Complete Reference Examples**: Includes full specifications for a multi-vendor marketplace and an CRM reference example.
 - **Cross-Agent**: Works with Claude Code, Antigravity, Cursor, and OpenAI Codex CLI.
 
 ### Quickstart

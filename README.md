@@ -10,11 +10,12 @@
 
 ---
 
-## 10-Second Demo & Recording Script
+## 10-Second Demo & Walkthrough
 
 ![laravel-spec-skill Demo](demo.gif)
 
-Watch an AI agent discover requirements, compile `spec/spec.json`, validate 29 architectural invariants with zero errors, generate 10 modular docs + dry-run Artisan commands, and pause at the Phase 4 review gate:
+> **Illustrative agent session walkthrough** (simulated interaction demonstrating the 5-phase workflow):
+
 
 ```
 [Agent] Phase 1 Discovery: Analyzed composer.json (Laravel 12, Filament v3). Asked 5 targeted questions.
@@ -37,7 +38,9 @@ Watch an AI agent discover requirements, compile `spec/spec.json`, validate 29 a
         Ready to proceed to Phase 5 TDD build? [Y/n]
 ```
 
-### Reproduce / Record this Demo (Terminal Script & VHS)
+### Reproducible CLI Commands
+
+> **Real CLI output** (run these locally on the bundled marketplace example):
 
 You can record the exact terminal demo into `demo.gif` using [VHS](https://github.com/charmbracelet/vhs) (`vhs demo.tape`) or run the commands locally in 10 seconds:
 
@@ -62,7 +65,7 @@ vhs demo.tape
 
 ---
 
-## Quickstart & Installation (At Most 2 Commands)
+## Quickstart & Installation
 
 Install `laravel-spec-skill` into your agentic workspace in seconds:
 
@@ -88,12 +91,14 @@ python laravel-spec-skill/scripts/install.py --target all
 
 Copy the skill directory directly into your agent's skills folder and add the instruction pointer:
 
-| Agent | Destination Directory | Instruction Pointer File |
-| :--- | :--- | :--- |
-| **Antigravity** | `~/.gemini/config/skills/laravel-spec/` | `GEMINI.md` |
-| **Claude Code** | `~/.claude/skills/laravel-spec/` | `CLAUDE.md` |
-| **Cursor** | `.cursor/skills/laravel-spec/` | `AGENTS.md` |
-| **OpenAI Codex CLI** | `~/.codex/skills/laravel-spec/` | `AGENTS.md` |
+| Agent | Workspace Directory | Global Destination | Instruction Pointer |
+| :--- | :--- | :--- | :--- |
+| **Antigravity** | `.agents/skills/laravel-spec/` | `~/.gemini/antigravity/skills/` *(or `~/.gemini/config/skills/`)* | `GEMINI.md` |
+| **Claude Code** | `.claude/skills/laravel-spec/` | `~/.claude/skills/laravel-spec/` | `CLAUDE.md` |
+| **Cursor** | `.cursor/skills/laravel-spec/` *(or `.agents/skills/`)* | `~/.cursor/skills/laravel-spec/` | `AGENTS.md` |
+| **OpenAI Codex CLI** | `.agents/skills/laravel-spec/` | `~/.codex/skills/laravel-spec/` *(or `~/.agents/skills/`)* | `AGENTS.md` |
+
+> **Note on `npx skills`**: Verified with `npx skills add github:AryaMehr-Nam/laravel-spec-skill`, which auto-detects Antigravity/Codex and copies the skill directly into `.agents/skills/laravel-spec/`.
 
 Pointer block to paste into your instruction file:
 ```markdown
@@ -111,12 +116,14 @@ or building Laravel or Filament applications, activate and follow `laravel-spec`
 
 We enforce a strict **Honesty Rule**: an agent is marked **Verified** only if it has undergone automated end-to-end integration and prompt validation. All other targets are marked **Experimental**.
 
-| Agent Harness | Status | Verification Details | Configuration Pointer |
+> **Honesty Rule**: All four target harnesses are classified as **Experimental (v0.1.0)** for this initial release until broader multi-OS community feedback is gathered. Automated tests verify installer directory structure and pointer injection.
+
+| Agent Harness | Status | Tested Scope | Configuration Pointer |
 | :--- | :---: | :--- | :--- |
-| **Antigravity** | **Verified** | Full tool invocation, prompt tested, automated tests pass, zero regressions | `GEMINI.md` |
-| **Claude Code** | **Experimental** | Standard Agent Skills format tested, CLI installer verified, manual prompt run | `CLAUDE.md` |
-| **Cursor** | **Experimental** | AGENTS.md block injection tested, directory structure compliant | `AGENTS.md` |
-| **OpenAI Codex CLI** | **Experimental** | AGENTS.md block injection tested, zero-dep scripts compatible | `AGENTS.md` |
+| **Antigravity** | **Experimental (v0.1.0)** | Live session & CLI tested (see `tests/fixtures/agent_runs/antigravity_verification.md`), 158 tests passing | `GEMINI.md` |
+| **Claude Code** | **Experimental (v0.1.0)** | Standard SKILL.md format & local installer tests passing | `CLAUDE.md` |
+| **Cursor** | **Experimental (v0.1.0)** | Directory layout (`.cursor/skills/` and `.agents/skills/`) & pointer tests passing | `AGENTS.md` |
+| **OpenAI Codex CLI** | **Experimental (v0.1.0)** | Standard `.agents/skills/` directory layout & pointer tests passing | `AGENTS.md` |
 
 ---
 
@@ -145,7 +152,7 @@ Standard LLM workflows fail on non-trivial Laravel + Filament codebases because 
 
 ## How It Works: The 5 Phases
 
-`laravel-spec-skill` guides the agent through an unshakeable 5-phase lifecycle:
+`laravel-spec-skill` guides the agent through a structured 5-phase lifecycle:
 
 ```
 [Phase 1: Discovery]
@@ -195,7 +202,7 @@ Detailed documentation with trigger conditions, examples, and fix hints is avail
 
 ## Curated Presets Guide
 
-`laravel-spec-skill` includes 4 pre-engineered architectural presets designed for enterprise and localized requirements:
+`laravel-spec-skill` includes 4 pre-engineered architectural presets designed for localized and multi-tenant requirements:
 
 ### 1. `rtl-fa` (Persian RTL & Localized Stack)
 - **What it does**: Configures Filament panels for Right-to-Left (RTL) typography, binds Jalali solar dates (`morilog/jalali`), and bundles the Vazirmatn font locally with **zero external CDN dependencies**.
@@ -221,8 +228,6 @@ Detailed documentation with trigger conditions, examples, and fix hints is avail
 
 ## Test Suite & Verification
 
-![Test Suite: 158 Passed](tests.png)
-
 Every rule, script, template, and preset is comprehensively tested across Python 3.10, 3.11, 3.12, and 3.13:
 - **158 passing unit & integration tests** in under 6 seconds.
 - **28 deliberate error fixtures** ensuring every validation rule triggers with precise JSON paths and fix hints.
@@ -237,12 +242,12 @@ python -m ruff check .
 
 ---
 
-## Production Examples Included
+## Reference Examples Included
 
-Inspect full, battle-tested specification packages in the repository:
+Inspect complete reference specification packages in the repository:
 
 - **[`examples/marketplace/`](examples/marketplace/)**: Multi-vendor marketplace with vendor escrow, order fulfillment state machine, Filament Admin & Vendor panels, and payment processing.
-- **[`examples/crm/`](examples/crm/)**: Enterprise CRM with sales leads state machine, activity logging, customer ownership scoping, and audit trails.
+- **[`examples/crm/`](examples/crm/)**: Customer Relationship Management (CRM) with sales leads state machine, activity logging, customer ownership scoping, and audit trails.
 
 Each example includes:
 - `spec.json`: Complete specification matching the formal JSON schema.

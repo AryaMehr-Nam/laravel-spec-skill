@@ -55,7 +55,7 @@ Rather than letting the AI jump straight to writing PHP files, `laravel-spec-ski
 
 The repository includes complete, fully validated reference specifications:
 - `examples/marketplace/`: Multi-vendor marketplace with vendor escrow, commissions, orders, and Filament admin/vendor panels.
-- `examples/crm/`: Enterprise CRM with sales lead lifecycles, customer scoping, and audit logs.
+- `examples/crm/`: CRM reference example with sales lead lifecycles, customer scoping, and audit logs.
 
 ```bash
 git clone https://github.com/AryaMehr-Nam/laravel-spec-skill.git

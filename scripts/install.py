@@ -40,6 +40,7 @@ class AgentTarget:
     global_skill_path: Path
     project_pointer_file: Path
     global_pointer_file: Path
+    alternate_global_paths: tuple[Path, ...] = ()
 
 
 AGENT_TARGETS: dict[str, AgentTarget] = {
@@ -66,14 +67,16 @@ AGENT_TARGETS: dict[str, AgentTarget] = {
         global_skill_path=Path(".codex/skills/laravel-spec"),
         project_pointer_file=Path("AGENTS.md"),
         global_pointer_file=Path(".codex/AGENTS.md"),
+        alternate_global_paths=(Path(".agents/skills/laravel-spec"),),
     ),
     "antigravity": AgentTarget(
         agent_id="antigravity",
         display_name="Antigravity",
         project_skill_path=Path(".agents/skills/laravel-spec"),
-        global_skill_path=Path(".gemini/config/skills/laravel-spec"),
+        global_skill_path=Path(".gemini/antigravity/skills/laravel-spec"),
         project_pointer_file=Path("GEMINI.md"),
         global_pointer_file=Path(".gemini/GEMINI.md"),
+        alternate_global_paths=(Path(".gemini/config/skills/laravel-spec"),),
     ),
 }
 
@@ -336,6 +339,12 @@ class Installer:
             install_skill_directory(self.source_dir, skill_dest, agent_id, mode)
             installed_skills.append(str(skill_dest))
 
+            if mode == "global" and target.alternate_global_paths:
+                for alt_path in target.alternate_global_paths:
+                    alt_dest = (self.home_dir / alt_path).resolve()
+                    install_skill_directory(self.source_dir, alt_dest, agent_id, mode)
+                    installed_skills.append(str(alt_dest))
+
             inject_pointer_block(pointer_dest)
             updated_pointers.append(str(pointer_dest))
 
@@ -360,6 +369,14 @@ class Installer:
                 was_removed = uninstall_skill_directory(skill_dest, agent_id=agent_id)
                 if was_removed:
                     removed_skills.append(str(skill_dest))
+
+            if mode == "global" and target.alternate_global_paths:
+                for alt_path in target.alternate_global_paths:
+                    alt_dest = (self.home_dir / alt_path).resolve()
+                    if alt_dest.exists():
+                        was_removed = uninstall_skill_directory(alt_dest, agent_id=agent_id)
+                        if was_removed:
+                            removed_skills.append(str(alt_dest))
 
         # Step 2: Clean up pointer files only if no remaining installed agent needs them
         for agent_id in normalized_agents:
