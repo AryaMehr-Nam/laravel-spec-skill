@@ -1,0 +1,441 @@
+{
+  "project": {
+    "name": "Apex CRM",
+    "description": "Enterprise customer relationship management platform with pipeline tracking, activity logging, and lead management",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3",
+    "presets": [],
+    "audit_log": true
+  },
+  "roles": [
+    {
+      "name": "super-admin",
+      "description": "System administrator with unrestricted configuration and access control privileges",
+      "is_super_admin": true
+    },
+    {
+      "name": "sales-manager",
+      "description": "Sales department leader overseeing pipeline health, quotas, and team performance"
+    },
+    {
+      "name": "sales-rep",
+      "description": "Individual account executive managing assigned contacts, accounts, and deals"
+    }
+  ],
+  "models": [
+    {
+      "name": "User",
+      "table": "users",
+      "soft_deletes": true,
+      "timestamps": true,
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        { "name": "name", "type": "string" },
+        { "name": "email", "type": "string", "unique": true, "pii": true },
+        { "name": "phone", "type": "string", "unique": true, "pii": true },
+        {
+          "name": "role",
+          "type": "enum",
+          "enum_values": ["admin", "manager", "rep"],
+          "default": "rep"
+        }
+      ],
+      "relations": [
+        { "name": "companies", "type": "hasMany", "model": "Company", "inverse": "account_owner" },
+        { "name": "deals", "type": "hasMany", "model": "Deal", "inverse": "owner" },
+        { "name": "activities", "type": "hasMany", "model": "Activity", "inverse": "assigned_to" },
+        { "name": "notes", "type": "hasMany", "model": "Note", "inverse": "author" },
+        { "name": "audit_logs", "type": "hasMany", "model": "AuditLog", "inverse": "user" }
+      ]
+    },
+    {
+      "name": "Company",
+      "table": "companies",
+      "soft_deletes": true,
+      "timestamps": true,
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        {
+          "name": "owner_id",
+          "type": "bigInteger",
+          "index": true,
+          "foreign": { "model": "User", "on_delete": "restrict" }
+        },
+        { "name": "name", "type": "string" },
+        { "name": "domain", "type": "string", "unique": true, "index": true },
+        { "name": "annual_revenue", "type": "decimal", "precision": 14, "scale": 2, "nullable": true },
+        { "name": "employee_count", "type": "integer", "nullable": true }
+      ],
+      "relations": [
+        { "name": "account_owner", "type": "belongsTo", "model": "User", "inverse": "companies" },
+        { "name": "contacts", "type": "hasMany", "model": "Contact", "inverse": "company" },
+        { "name": "deals", "type": "hasMany", "model": "Deal", "inverse": "company" }
+      ]
+    },
+    {
+      "name": "Contact",
+      "table": "contacts",
+      "soft_deletes": true,
+      "timestamps": true,
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        {
+          "name": "company_id",
+          "type": "bigInteger",
+          "index": true,
+          "foreign": { "model": "Company", "on_delete": "cascade" }
+        },
+        { "name": "first_name", "type": "string" },
+        { "name": "last_name", "type": "string" },
+        { "name": "email", "type": "string", "unique": true, "pii": true },
+        { "name": "phone", "type": "string", "pii": true },
+        { "name": "position", "type": "string", "nullable": true },
+        {
+          "name": "avatar",
+          "type": "image",
+          "nullable": true,
+          "max_size_kb": 2048,
+          "allowed_mimes": ["image/jpeg", "image/png"]
+        }
+      ],
+      "relations": [
+        { "name": "company", "type": "belongsTo", "model": "Company", "inverse": "contacts" },
+        { "name": "deals", "type": "hasMany", "model": "Deal", "inverse": "primary_contact" },
+        { "name": "activities", "type": "hasMany", "model": "Activity", "inverse": "contact" }
+      ]
+    },
+    {
+      "name": "Deal",
+      "table": "deals",
+      "soft_deletes": true,
+      "timestamps": true,
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        {
+          "name": "company_id",
+          "type": "bigInteger",
+          "index": true,
+          "foreign": { "model": "Company", "on_delete": "restrict" }
+        },
+        {
+          "name": "contact_id",
+          "type": "bigInteger",
+          "index": true,
+          "nullable": true,
+          "foreign": { "model": "Contact", "on_delete": "set null" }
+        },
+        {
+          "name": "owner_id",
+          "type": "bigInteger",
+          "index": true,
+          "foreign": { "model": "User", "on_delete": "restrict" }
+        },
+        { "name": "title", "type": "string" },
+        { "name": "deal_amount", "type": "decimal", "precision": 12, "scale": 2 },
+        { "name": "stage", "type": "string" },
+        { "name": "probability", "type": "integer", "default": 20 },
+        { "name": "expected_close_date", "type": "date", "nullable": true }
+      ],
+      "states": {
+        "field": "stage",
+        "initial": "lead",
+        "final": ["closed_won", "closed_lost"],
+        "transitions": [
+          { "from": "lead", "to": "qualified", "roles": ["sales-rep", "sales-manager", "super-admin"] },
+          { "from": "lead", "to": "closed_lost", "roles": ["sales-rep", "sales-manager", "super-admin"] },
+          { "from": "qualified", "to": "proposal", "roles": ["sales-rep", "sales-manager", "super-admin"] },
+          { "from": "qualified", "to": "closed_lost", "roles": ["sales-rep", "sales-manager", "super-admin"] },
+          { "from": "proposal", "to": "negotiation", "roles": ["sales-rep", "sales-manager", "super-admin"] },
+          { "from": "proposal", "to": "closed_lost", "roles": ["sales-rep", "sales-manager", "super-admin"] },
+          { "from": "negotiation", "to": "closed_won", "roles": ["sales-manager", "super-admin"] },
+          { "from": "negotiation", "to": "closed_lost", "roles": ["sales-rep", "sales-manager", "super-admin"] }
+        ]
+      },
+      "relations": [
+        { "name": "company", "type": "belongsTo", "model": "Company", "inverse": "deals" },
+        { "name": "primary_contact", "type": "belongsTo", "model": "Contact", "inverse": "deals" },
+        { "name": "owner", "type": "belongsTo", "model": "User", "inverse": "deals" },
+        { "name": "activities", "type": "hasMany", "model": "Activity", "inverse": "deal" },
+        { "name": "notes", "type": "hasMany", "model": "Note", "inverse": "deal" }
+      ]
+    },
+    {
+      "name": "Activity",
+      "table": "activities",
+      "timestamps": true,
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        {
+          "name": "deal_id",
+          "type": "bigInteger",
+          "index": true,
+          "nullable": true,
+          "foreign": { "model": "Deal", "on_delete": "cascade" }
+        },
+        {
+          "name": "contact_id",
+          "type": "bigInteger",
+          "index": true,
+          "nullable": true,
+          "foreign": { "model": "Contact", "on_delete": "cascade" }
+        },
+        {
+          "name": "assigned_to_id",
+          "type": "bigInteger",
+          "index": true,
+          "foreign": { "model": "User", "on_delete": "restrict" }
+        },
+        {
+          "name": "type",
+          "type": "enum",
+          "enum_values": ["call", "meeting", "email", "task"]
+        },
+        { "name": "subject", "type": "string" },
+        { "name": "status", "type": "string" },
+        { "name": "due_at", "type": "datetime", "nullable": true }
+      ],
+      "states": {
+        "field": "status",
+        "initial": "scheduled",
+        "final": ["completed", "cancelled"],
+        "transitions": [
+          { "from": "scheduled", "to": "completed", "roles": ["sales-rep", "sales-manager", "super-admin"] },
+          { "from": "scheduled", "to": "cancelled", "roles": ["sales-rep", "sales-manager", "super-admin"] }
+        ]
+      },
+      "relations": [
+        { "name": "deal", "type": "belongsTo", "model": "Deal", "inverse": "activities" },
+        { "name": "contact", "type": "belongsTo", "model": "Contact", "inverse": "activities" },
+        { "name": "assigned_to", "type": "belongsTo", "model": "User", "inverse": "activities" }
+      ]
+    },
+    {
+      "name": "Note",
+      "table": "notes",
+      "timestamps": true,
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        {
+          "name": "deal_id",
+          "type": "bigInteger",
+          "index": true,
+          "foreign": { "model": "Deal", "on_delete": "cascade" }
+        },
+        {
+          "name": "author_id",
+          "type": "bigInteger",
+          "index": true,
+          "foreign": { "model": "User", "on_delete": "restrict" }
+        },
+        { "name": "content", "type": "text" },
+        {
+          "name": "attachment",
+          "type": "file",
+          "nullable": true,
+          "max_size_kb": 10240,
+          "allowed_mimes": ["application/pdf", "image/png", "image/jpeg"]
+        }
+      ],
+      "relations": [
+        { "name": "deal", "type": "belongsTo", "model": "Deal", "inverse": "notes" },
+        { "name": "author", "type": "belongsTo", "model": "User", "inverse": "notes" }
+      ]
+    },
+    {
+      "name": "AuditLog",
+      "table": "audit_logs",
+      "timestamps": true,
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        {
+          "name": "user_id",
+          "type": "bigInteger",
+          "index": true,
+          "nullable": true,
+          "foreign": { "model": "User", "on_delete": "set null" }
+        },
+        { "name": "action", "type": "string" },
+        { "name": "auditable_type", "type": "string" },
+        { "name": "auditable_id", "type": "bigInteger", "index": true },
+        { "name": "ip_address", "type": "string", "pii": true }
+      ],
+      "relations": [
+        { "name": "user", "type": "belongsTo", "model": "User", "inverse": "audit_logs" }
+      ]
+    }
+  ],
+  "policies": [
+    {
+      "model": "User",
+      "ownership": "none",
+      "abilities": {
+        "viewAny": ["super-admin", "sales-manager"],
+        "view": ["super-admin", "sales-manager", "sales-rep"],
+        "create": ["super-admin"],
+        "update": ["super-admin", "sales-manager"],
+        "delete": ["super-admin"]
+      }
+    },
+    {
+      "model": "Company",
+      "ownership": "owner_field:owner_id",
+      "abilities": {
+        "viewAny": ["sales-rep", "sales-manager", "super-admin"],
+        "view": ["sales-rep", "sales-manager", "super-admin"],
+        "create": ["sales-rep", "sales-manager", "super-admin"],
+        "update": ["sales-rep", "sales-manager", "super-admin"],
+        "delete": ["sales-manager", "super-admin"]
+      }
+    },
+    {
+      "model": "Contact",
+      "ownership": "none",
+      "abilities": {
+        "viewAny": ["sales-rep", "sales-manager", "super-admin"],
+        "view": ["sales-rep", "sales-manager", "super-admin"],
+        "create": ["sales-rep", "sales-manager", "super-admin"],
+        "update": ["sales-rep", "sales-manager", "super-admin"],
+        "delete": ["sales-manager", "super-admin"]
+      }
+    },
+    {
+      "model": "Deal",
+      "ownership": "owner_field:owner_id",
+      "abilities": {
+        "viewAny": ["sales-rep", "sales-manager", "super-admin"],
+        "view": ["sales-rep", "sales-manager", "super-admin"],
+        "create": ["sales-rep", "sales-manager", "super-admin"],
+        "update": ["sales-rep", "sales-manager", "super-admin"],
+        "delete": ["sales-manager", "super-admin"]
+      }
+    },
+    {
+      "model": "Activity",
+      "ownership": "owner_field:assigned_to_id",
+      "abilities": {
+        "viewAny": ["sales-rep", "sales-manager", "super-admin"],
+        "view": ["sales-rep", "sales-manager", "super-admin"],
+        "create": ["sales-rep", "sales-manager", "super-admin"],
+        "update": ["sales-rep", "sales-manager", "super-admin"],
+        "delete": ["sales-rep", "sales-manager", "super-admin"]
+      }
+    },
+    {
+      "model": "Note",
+      "ownership": "owner_field:author_id",
+      "abilities": {
+        "viewAny": ["sales-rep", "sales-manager", "super-admin"],
+        "view": ["sales-rep", "sales-manager", "super-admin"],
+        "create": ["sales-rep", "sales-manager", "super-admin"],
+        "update": ["sales-rep", "sales-manager", "super-admin"],
+        "delete": ["sales-manager", "super-admin"]
+      }
+    },
+    {
+      "model": "AuditLog",
+      "ownership": "none",
+      "abilities": {
+        "viewAny": ["super-admin"],
+        "view": ["super-admin"],
+        "create": ["*"],
+        "update": ["super-admin"],
+        "delete": ["super-admin"]
+      }
+    }
+  ],
+  "filament": {
+    "panels": [
+      {
+        "id": "admin",
+        "path": "admin",
+        "roles": ["super-admin"],
+        "resources": [
+          { "model": "User", "table": {} },
+          { "model": "Company", "table": { "query_scope": "scopedToAdmin" } },
+          { "model": "Contact", "table": {} },
+          { "model": "Deal", "table": { "query_scope": "scopedToAdmin" } },
+          { "model": "Activity", "table": { "query_scope": "scopedToAdmin" } },
+          { "model": "Note", "table": { "query_scope": "scopedToAdmin" } },
+          { "model": "AuditLog", "table": {} }
+        ]
+      },
+      {
+        "id": "sales",
+        "path": "sales",
+        "roles": ["sales-manager", "sales-rep", "super-admin"],
+        "resources": [
+          { "model": "Company", "table": { "query_scope": "scopedToRepOrTeam" } },
+          { "model": "Contact", "table": {} },
+          { "model": "Deal", "table": { "query_scope": "scopedToRepDeals" } },
+          { "model": "Activity", "table": { "query_scope": "scopedToRepActivities" } },
+          { "model": "Note", "table": { "query_scope": "scopedToRepNotes" } }
+        ]
+      }
+    ]
+  },
+  "integrations": [
+    { "name": "activity_log", "kind": "audit_log", "config_notes": "PII access and pipeline audit trails" },
+    { "name": "mailgun", "kind": "mail", "config_notes": "Transactional emails for deal milestones and activity reminders" },
+    { "name": "s3", "kind": "storage", "config_notes": "Document and proposal attachment storage" }
+  ],
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Core Identity & Account Foundation",
+      "depends_on": [],
+      "scope": ["User", "AuditLog"],
+      "acceptance": [
+        "User authentication, role assignment, and PII audit log events pass tests",
+        "Baseline database migrations and seeders execute cleanly"
+      ]
+    },
+    {
+      "id": "M1",
+      "title": "Account & Contact Directory",
+      "depends_on": ["M0"],
+      "scope": ["Company", "Contact"],
+      "acceptance": [
+        "Company domain uniqueness and annual revenue decimal precision pass tests",
+        "Contact profile avatar upload constraints (2MB max) pass validation"
+      ]
+    },
+    {
+      "id": "M2",
+      "title": "Sales Pipeline & Deal Governance",
+      "depends_on": ["M1"],
+      "scope": ["Deal"],
+      "acceptance": [
+        "Deal stage state machine transitions from lead through closed_won or closed_lost",
+        "Deal ownership scoping restricts sales reps to assigned accounts and deals"
+      ]
+    },
+    {
+      "id": "M3",
+      "title": "Collaboration & Activity Tracking",
+      "depends_on": ["M2"],
+      "scope": ["Activity", "Note"],
+      "acceptance": [
+        "Activity lifecycle transition from scheduled to completed or cancelled passes tests",
+        "Deal notes with PDF/image attachments enforce 10MB limits and proper authorization"
+      ]
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "Q1",
+      "category": "Email Sync",
+      "question": "Should inbound customer email replies sync via IMAP polling or webhook forwarders?",
+      "resolution": "Phase 1 will rely on Mailgun inbound route webhooks with HMAC signature validation.",
+      "status": "resolved"
+    },
+    {
+      "id": "Q2",
+      "category": "Lead Rotation",
+      "question": "What round-robin algorithm should govern new lead assignment across sales reps?",
+      "resolution": "Weighted round-robin by active deal load per sales representative.",
+      "status": "resolved"
+    }
+  ]
+}

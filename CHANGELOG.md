@@ -15,3 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `skills/laravel-spec/scripts/render_docs.py`: Converts `spec.json` into 10 modular, strictly deterministic (byte-for-byte identical hash) markdown documents (`00-overview.md` through `09-open-questions.md`).
   - `skills/laravel-spec/scripts/render_commands.py`: Dependency-ordered generator for Artisan CLI scaffold commands (`make:model -mfsc`, `make:policy`, `make:filament-resource`, etc.) in dry-run mode (never executes).
   - `tests/test_renderers.py`: Determinism verification, hash identity across render passes, topological command ordering tests, and CLI execution tests.
+- **Milestone 3**: Real-world architectural presets and production-grade specification examples:
+  - Preset reference guides in `skills/laravel-spec/references/presets/`:
+    - `rtl-fa.md`: Persian RTL layout for Filament, Jalali dates (`morilog/jalali`), Persian digit normalization, local Vazirmatn font with zero CDN dependencies.
+    - `iran-payments.md`: Multi-gateway payment processing (Zarinpal, Shepa, Saman SEP), atomic callback verification, `idempotency_key` unique constraints, and Rial/Toman conversion handling.
+    - `otp-login.md`: Passwordless SMS OTP authentication, tiered rate limiting, 120-second expiration, single-use cryptographic nonces, and user enumeration defense.
+    - `multi-tenant.md`: Single-database row-level tenant scoping (`tenant_id`, native Filament panel tenancy) and multi-database isolation (`stancl/tenancy`).
+  - Production reference examples with full deterministic artifacts:
+    - `examples/marketplace/`: Valid multi-vendor e-commerce marketplace (`spec.json`, 10 rendered markdown docs, `commands.sh`, `validation.txt`).
+    - `examples/crm/`: Valid enterprise CRM (`spec.json`, 10 rendered markdown docs, `commands.sh`, `validation.txt`).
+  - `tests/test_examples.py`: Comprehensive test suite verifying strict validation, deterministic doc and command generation, and preset documentation completeness.

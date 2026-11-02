@@ -1,0 +1,457 @@
+{
+  "project": {
+    "name": "Marketplace Pro",
+    "description": "Production-grade multi-vendor e-commerce marketplace with escrow payments and vendor management",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3",
+    "presets": [
+      "iran-payments"
+    ],
+    "audit_log": true
+  },
+  "roles": [
+    {
+      "name": "super-admin",
+      "description": "System administrator with unrestricted platform oversight",
+      "is_super_admin": true
+    },
+    {
+      "name": "vendor",
+      "description": "Registered merchant managing catalog, store profile, and order fulfillments"
+    },
+    {
+      "name": "customer",
+      "description": "Authenticated buyer purchasing products, tracking orders, and submitting reviews"
+    }
+  ],
+  "models": [
+    {
+      "name": "User",
+      "table": "users",
+      "soft_deletes": true,
+      "timestamps": true,
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        { "name": "name", "type": "string" },
+        { "name": "email", "type": "string", "unique": true, "pii": true },
+        { "name": "phone", "type": "string", "unique": true, "pii": true },
+        {
+          "name": "avatar",
+          "type": "image",
+          "nullable": true,
+          "max_size_kb": 2048,
+          "allowed_mimes": ["image/jpeg", "image/png", "image/webp"]
+        }
+      ],
+      "relations": [
+        { "name": "vendor_profile", "type": "hasOne", "model": "VendorProfile", "inverse": "user" },
+        { "name": "orders", "type": "hasMany", "model": "Order", "inverse": "customer" },
+        { "name": "payments", "type": "hasMany", "model": "Payment", "inverse": "user" },
+        { "name": "reviews", "type": "hasMany", "model": "Review", "inverse": "customer" }
+      ]
+    },
+    {
+      "name": "VendorProfile",
+      "table": "vendor_profiles",
+      "soft_deletes": true,
+      "timestamps": true,
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        {
+          "name": "user_id",
+          "type": "bigInteger",
+          "unique": true,
+          "index": true,
+          "foreign": { "model": "User", "on_delete": "cascade" }
+        },
+        { "name": "shop_name", "type": "string" },
+        { "name": "slug", "type": "string", "unique": true, "index": true },
+        { "name": "description", "type": "text", "nullable": true },
+        {
+          "name": "logo",
+          "type": "image",
+          "nullable": true,
+          "max_size_kb": 4096,
+          "allowed_mimes": ["image/jpeg", "image/png", "image/webp"]
+        },
+        { "name": "commission_rate", "type": "decimal", "precision": 5, "scale": 2, "default": 10.0 }
+      ],
+      "relations": [
+        { "name": "user", "type": "belongsTo", "model": "User", "inverse": "vendor_profile" },
+        { "name": "products", "type": "hasMany", "model": "Product", "inverse": "vendor" }
+      ]
+    },
+    {
+      "name": "Category",
+      "table": "categories",
+      "timestamps": true,
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        { "name": "name", "type": "string" },
+        { "name": "slug", "type": "string", "unique": true, "index": true },
+        { "name": "description", "type": "text", "nullable": true }
+      ],
+      "relations": [
+        { "name": "products", "type": "hasMany", "model": "Product", "inverse": "category" }
+      ]
+    },
+    {
+      "name": "Product",
+      "table": "products",
+      "soft_deletes": true,
+      "timestamps": true,
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        {
+          "name": "vendor_id",
+          "type": "bigInteger",
+          "index": true,
+          "foreign": { "model": "VendorProfile", "on_delete": "cascade" }
+        },
+        {
+          "name": "category_id",
+          "type": "bigInteger",
+          "index": true,
+          "foreign": { "model": "Category", "on_delete": "restrict" }
+        },
+        { "name": "title", "type": "string" },
+        { "name": "slug", "type": "string", "unique": true, "index": true },
+        { "name": "price", "type": "decimal", "precision": 12, "scale": 2 },
+        { "name": "stock", "type": "integer", "default": 0 },
+        {
+          "name": "cover_image",
+          "type": "image",
+          "max_size_kb": 5120,
+          "allowed_mimes": ["image/jpeg", "image/png", "image/webp"]
+        },
+        {
+          "name": "status",
+          "type": "enum",
+          "enum_values": ["draft", "published", "archived"],
+          "default": "draft"
+        }
+      ],
+      "relations": [
+        { "name": "vendor", "type": "belongsTo", "model": "VendorProfile", "inverse": "products" },
+        { "name": "category", "type": "belongsTo", "model": "Category", "inverse": "products" },
+        { "name": "order_items", "type": "hasMany", "model": "OrderItem", "inverse": "product" },
+        { "name": "reviews", "type": "hasMany", "model": "Review", "inverse": "product" }
+      ]
+    },
+    {
+      "name": "Order",
+      "table": "orders",
+      "soft_deletes": true,
+      "timestamps": true,
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        {
+          "name": "customer_id",
+          "type": "bigInteger",
+          "index": true,
+          "foreign": { "model": "User", "on_delete": "restrict" }
+        },
+        { "name": "order_number", "type": "string", "unique": true, "index": true },
+        { "name": "subtotal_amount", "type": "decimal", "precision": 12, "scale": 2 },
+        { "name": "tax_amount", "type": "decimal", "precision": 12, "scale": 2, "default": 0.0 },
+        { "name": "total_amount", "type": "decimal", "precision": 12, "scale": 2 },
+        { "name": "status", "type": "string" }
+      ],
+      "states": {
+        "field": "status",
+        "initial": "pending",
+        "final": ["delivered", "cancelled"],
+        "transitions": [
+          { "from": "pending", "to": "paid", "roles": ["customer", "super-admin"] },
+          { "from": "pending", "to": "cancelled", "roles": ["customer", "super-admin"] },
+          { "from": "paid", "to": "processing", "roles": ["vendor", "super-admin"] },
+          { "from": "processing", "to": "shipped", "roles": ["vendor", "super-admin"] },
+          { "from": "shipped", "to": "delivered", "roles": ["vendor", "customer", "super-admin"] },
+          { "from": "paid", "to": "cancelled", "roles": ["super-admin"] }
+        ]
+      },
+      "relations": [
+        { "name": "customer", "type": "belongsTo", "model": "User", "inverse": "orders" },
+        { "name": "items", "type": "hasMany", "model": "OrderItem", "inverse": "order" },
+        { "name": "payments", "type": "hasMany", "model": "Payment", "inverse": "order" }
+      ]
+    },
+    {
+      "name": "OrderItem",
+      "table": "order_items",
+      "timestamps": true,
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        {
+          "name": "order_id",
+          "type": "bigInteger",
+          "index": true,
+          "foreign": { "model": "Order", "on_delete": "cascade" }
+        },
+        {
+          "name": "product_id",
+          "type": "bigInteger",
+          "index": true,
+          "foreign": { "model": "Product", "on_delete": "restrict" }
+        },
+        { "name": "quantity", "type": "integer" },
+        { "name": "unit_price", "type": "decimal", "precision": 12, "scale": 2 },
+        { "name": "subtotal_price", "type": "decimal", "precision": 12, "scale": 2 }
+      ],
+      "relations": [
+        { "name": "order", "type": "belongsTo", "model": "Order", "inverse": "items" },
+        { "name": "product", "type": "belongsTo", "model": "Product", "inverse": "order_items" }
+      ]
+    },
+    {
+      "name": "Payment",
+      "table": "payments",
+      "timestamps": true,
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        {
+          "name": "order_id",
+          "type": "bigInteger",
+          "index": true,
+          "foreign": { "model": "Order", "on_delete": "cascade" }
+        },
+        {
+          "name": "user_id",
+          "type": "bigInteger",
+          "index": true,
+          "foreign": { "model": "User", "on_delete": "restrict" }
+        },
+        { "name": "gateway", "type": "string" },
+        { "name": "amount", "type": "decimal", "precision": 12, "scale": 2 },
+        { "name": "authority", "type": "string", "index": true },
+        { "name": "ref_id", "type": "string", "nullable": true },
+        { "name": "idempotency_key", "type": "string", "unique": true, "index": true },
+        { "name": "status", "type": "string" }
+      ],
+      "states": {
+        "field": "status",
+        "initial": "initiated",
+        "final": ["refunded", "failed"],
+        "transitions": [
+          { "from": "initiated", "to": "redirected", "roles": ["customer", "super-admin"] },
+          { "from": "redirected", "to": "verified", "roles": ["*"] },
+          { "from": "redirected", "to": "failed", "roles": ["*"] },
+          { "from": "verified", "to": "refunded", "roles": ["super-admin"] }
+        ]
+      },
+      "relations": [
+        { "name": "order", "type": "belongsTo", "model": "Order", "inverse": "payments" },
+        { "name": "user", "type": "belongsTo", "model": "User", "inverse": "payments" }
+      ]
+    },
+    {
+      "name": "Review",
+      "table": "reviews",
+      "timestamps": true,
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        {
+          "name": "product_id",
+          "type": "bigInteger",
+          "index": true,
+          "foreign": { "model": "Product", "on_delete": "cascade" }
+        },
+        {
+          "name": "customer_id",
+          "type": "bigInteger",
+          "index": true,
+          "foreign": { "model": "User", "on_delete": "cascade" }
+        },
+        { "name": "rating", "type": "integer" },
+        { "name": "comment", "type": "text" }
+      ],
+      "relations": [
+        { "name": "product", "type": "belongsTo", "model": "Product", "inverse": "reviews" },
+        { "name": "customer", "type": "belongsTo", "model": "User", "inverse": "reviews" }
+      ]
+    }
+  ],
+  "policies": [
+    {
+      "model": "User",
+      "ownership": "none",
+      "abilities": {
+        "viewAny": ["super-admin"],
+        "view": ["super-admin", "vendor", "customer"],
+        "create": ["*"],
+        "update": ["super-admin", "customer"],
+        "delete": ["super-admin"]
+      }
+    },
+    {
+      "model": "VendorProfile",
+      "ownership": "owner_field:user_id",
+      "abilities": {
+        "viewAny": ["super-admin", "vendor"],
+        "view": ["super-admin", "vendor", "customer"],
+        "create": ["vendor", "super-admin"],
+        "update": ["vendor", "super-admin"],
+        "delete": ["super-admin"]
+      }
+    },
+    {
+      "model": "Category",
+      "ownership": "none",
+      "abilities": {
+        "viewAny": ["*"],
+        "view": ["*"],
+        "create": ["super-admin"],
+        "update": ["super-admin"],
+        "delete": ["super-admin"]
+      }
+    },
+    {
+      "model": "Product",
+      "ownership": "owner_field:vendor_id",
+      "abilities": {
+        "viewAny": ["vendor", "super-admin", "customer"],
+        "view": ["vendor", "super-admin", "customer"],
+        "create": ["vendor", "super-admin"],
+        "update": ["vendor", "super-admin"],
+        "delete": ["vendor", "super-admin"]
+      }
+    },
+    {
+      "model": "Order",
+      "ownership": "owner_field:customer_id",
+      "abilities": {
+        "viewAny": ["customer", "vendor", "super-admin"],
+        "view": ["customer", "vendor", "super-admin"],
+        "create": ["customer", "super-admin"],
+        "update": ["vendor", "super-admin"],
+        "delete": ["super-admin"]
+      }
+    },
+    {
+      "model": "OrderItem",
+      "ownership": "none",
+      "abilities": {
+        "viewAny": ["vendor", "customer", "super-admin"],
+        "view": ["vendor", "customer", "super-admin"],
+        "create": ["customer", "super-admin"],
+        "update": ["super-admin"],
+        "delete": ["super-admin"]
+      }
+    },
+    {
+      "model": "Payment",
+      "ownership": "owner_field:user_id",
+      "abilities": {
+        "viewAny": ["customer", "super-admin"],
+        "view": ["customer", "super-admin"],
+        "create": ["customer", "super-admin"],
+        "update": ["super-admin"],
+        "delete": ["super-admin"]
+      }
+    },
+    {
+      "model": "Review",
+      "ownership": "owner_field:customer_id",
+      "abilities": {
+        "viewAny": ["*"],
+        "view": ["*"],
+        "create": ["customer"],
+        "update": ["customer", "super-admin"],
+        "delete": ["super-admin"]
+      }
+    }
+  ],
+  "filament": {
+    "panels": [
+      {
+        "id": "admin",
+        "path": "admin",
+        "roles": ["super-admin"],
+        "resources": [
+          { "model": "User", "table": {} },
+          { "model": "VendorProfile", "table": { "query_scope": "scopedToAdmin" } },
+          { "model": "Category", "table": {} },
+          { "model": "Product", "table": { "query_scope": "scopedToAdmin" } },
+          { "model": "Order", "table": { "query_scope": "scopedToAdmin" } },
+          { "model": "Payment", "table": { "query_scope": "scopedToAdmin" } },
+          { "model": "Review", "table": { "query_scope": "scopedToAdmin" } }
+        ]
+      },
+      {
+        "id": "vendor",
+        "path": "vendor",
+        "roles": ["vendor", "super-admin"],
+        "resources": [
+          { "model": "VendorProfile", "table": { "query_scope": "scopedToCurrentVendor" } },
+          { "model": "Product", "table": { "query_scope": "scopedToVendorProducts" } },
+          { "model": "Order", "table": { "query_scope": "scopedToVendorOrders" } }
+        ]
+      }
+    ]
+  },
+  "integrations": [
+    { "name": "activity_log", "kind": "audit_log", "config_notes": "Spatie activity log for tracking order status changes and PII views" },
+    { "name": "zarinpal", "kind": "payments", "config_notes": "Zarinpal REST API v4 sandbox and production credentials" },
+    { "name": "s3", "kind": "storage", "config_notes": "AWS S3 or MinIO bucket for catalog and profile media" }
+  ],
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Foundation, Authentication & Users",
+      "depends_on": [],
+      "scope": ["User", "VendorProfile"],
+      "acceptance": [
+        "User registration, authentication, and role authorization policies pass automated tests",
+        "Vendor profile creation and relationship to user account pass integration tests"
+      ]
+    },
+    {
+      "id": "M1",
+      "title": "Product Catalog & Categories",
+      "depends_on": ["M0"],
+      "scope": ["Category", "Product"],
+      "acceptance": [
+        "Hierarchical category management and slug generation pass tests",
+        "Vendor product CRUD, price decimal validation, and cover image upload constraints pass tests"
+      ]
+    },
+    {
+      "id": "M2",
+      "title": "Orders & Cart Items",
+      "depends_on": ["M1"],
+      "scope": ["Order", "OrderItem"],
+      "acceptance": [
+        "Order lifecycle state machine transitions from pending through delivered or cancelled",
+        "Order item subtotal calculation and inventory deduction pass concurrency tests"
+      ]
+    },
+    {
+      "id": "M3",
+      "title": "Payments, Reviews & Seller Settlements",
+      "depends_on": ["M2"],
+      "scope": ["Payment", "Review"],
+      "acceptance": [
+        "Payment gateway callback verification with idempotency and double-spend locking passes tests",
+        "Product reviews and ratings calculation pass authorization checks"
+      ]
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "Q1",
+      "category": "Payments",
+      "question": "Should vendor payouts execute via automated Sheba API transfers or manual bank export?",
+      "resolution": "Phase 1 will use manual accounting exports; automated payout gateway planned for Phase 2.",
+      "status": "resolved"
+    },
+    {
+      "id": "Q2",
+      "category": "Inventory",
+      "question": "Should inventory be reserved upon order placement or after successful payment confirmation?",
+      "resolution": "Inventory is temporarily held for 15 minutes during pending status, released if payment fails.",
+      "status": "resolved"
+    }
+  ]
+}
