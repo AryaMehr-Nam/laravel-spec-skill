@@ -27,22 +27,40 @@ DOC_FILENAMES = (
 )
 
 
-def _render_overview(spec: dict[str, Any]) -> str:
-    proj = spec.get("project", {})
-    models = spec.get("models", [])
-    roles = spec.get("roles", [])
-    filament = spec.get("filament", {})
-    panels = filament.get("panels", []) if isinstance(filament, dict) else []
-    integrations = spec.get("integrations", [])
-    milestones = spec.get("milestones", [])
-    presets = proj.get("presets", [])
+def _as_list(val: Any) -> list[Any]:
+    """Ensure value is a list; otherwise return empty list."""
+    if isinstance(val, list):
+        return val
+    return []
 
-    preset_str = ", ".join(f"`{p}`" for p in presets) if presets else "None"
+
+def _as_dict(val: Any) -> dict[str, Any]:
+    """Ensure value is a dictionary; otherwise return empty dictionary."""
+    if isinstance(val, dict):
+        return val
+    return {}
+
+
+def _render_overview(spec: dict[str, Any]) -> str:
+    spec = _as_dict(spec)
+    proj = _as_dict(spec.get("project"))
+    models = _as_list(spec.get("models"))
+    roles = _as_list(spec.get("roles"))
+    filament = _as_dict(spec.get("filament"))
+    panels = _as_list(filament.get("panels"))
+    integrations = _as_list(spec.get("integrations"))
+    milestones = _as_list(spec.get("milestones"))
+    presets = _as_list(proj.get("presets"))
+
+    preset_str = ", ".join(f"`{p}`" for p in presets if p) if presets else "None"
     audit_str = "Enabled" if proj.get("audit_log") else "Disabled"
-    desc_str = proj.get("description", "Enterprise application built with Laravel and Filament.")
+    desc_str = (
+        proj.get("description", "Enterprise application built with Laravel and Filament.")
+        or "Enterprise application built with Laravel and Filament."
+    )
 
     lines = [
-        f"# Overview: {proj.get('name', 'Laravel Application')}",
+        f"# Overview: {proj.get('name', 'Laravel Application') or 'Laravel Application'}",
         "",
         f"> {desc_str}",
         "",
@@ -50,12 +68,12 @@ def _render_overview(spec: dict[str, Any]) -> str:
         "",
         "| Property | Value |",
         "| :--- | :--- |",
-        f"| **Application Name** | {proj.get('name', 'N/A')} |",
-        f"| **Description** | {proj.get('description', 'N/A')} |",
-        f"| **Primary Locale** | `{proj.get('locale', 'en')}` |",
-        f"| **Default Timezone** | `{proj.get('timezone', 'UTC')}` |",
-        f"| **Laravel Version** | `v{proj.get('laravel_version', '12')}` |",
-        f"| **Filament Version** | `{proj.get('filament_version', 'v3')}` |",
+        f"| **Application Name** | {proj.get('name', 'N/A') or 'N/A'} |",
+        f"| **Description** | {proj.get('description', 'N/A') or 'N/A'} |",
+        f"| **Primary Locale** | `{proj.get('locale', 'en') or 'en'}` |",
+        f"| **Default Timezone** | `{proj.get('timezone', 'UTC') or 'UTC'}` |",
+        f"| **Laravel Version** | `v{proj.get('laravel_version', '12') or '12'}` |",
+        f"| **Filament Version** | `{proj.get('filament_version', 'v3') or 'v3'}` |",
         f"| **Audit Logging** | {audit_str} |",
         f"| **Presets** | {preset_str} |",
         "",
@@ -72,7 +90,8 @@ def _render_overview(spec: dict[str, Any]) -> str:
 
 
 def _render_modules(spec: dict[str, Any]) -> str:
-    models = spec.get("models", [])
+    spec = _as_dict(spec)
+    models = [m for m in _as_list(spec.get("models")) if isinstance(m, dict)]
     lines = [
         "# Functional Modules & Domain Entities",
         "",
@@ -88,10 +107,10 @@ def _render_modules(spec: dict[str, Any]) -> str:
         lines.append("| _None_ | _None_ | 0 | 0 | None |")
     else:
         for m in models:
-            mname = m.get("name", "Unknown")
-            table = m.get("table", "unknown")
-            fcount = len(m.get("fields", []))
-            rcount = len(m.get("relations", []))
+            mname = m.get("name", "Unknown") or "Unknown"
+            table = m.get("table", "unknown") or "unknown"
+            fcount = len(_as_list(m.get("fields")))
+            rcount = len(_as_list(m.get("relations")))
             has_sm = "Yes" if m.get("states") else "No"
             lines.append(f"| **{mname}** | `{table}` | {fcount} | {rcount} | {has_sm} |")
 
@@ -103,19 +122,22 @@ def _render_modules(spec: dict[str, Any]) -> str:
         lines.append("_No domain models declared in this specification._\n")
     else:
         for m in models:
-            mname = m.get("name", "Unknown")
-            table = m.get("table", "unknown")
-            desc = m.get("description", f"Encapsulates domain logic for `{mname}` entities.")
-            fields = m.get("fields", [])
-            relations = m.get("relations", [])
+            mname = m.get("name", "Unknown") or "Unknown"
+            table = m.get("table", "unknown") or "unknown"
+            desc = (
+                m.get("description", f"Encapsulates domain logic for `{mname}` entities.")
+                or f"Encapsulates domain logic for `{mname}` entities."
+            )
+            fields = [f for f in _as_list(m.get("fields")) if isinstance(f, dict)]
+            relations = [r for r in _as_list(m.get("relations")) if isinstance(r, dict)]
 
             lines.append(f"### {mname} Module")
             lines.append(f"- **Database Table**: `{table}`")
             lines.append(f"- **Purpose**: {desc}")
-            kfields = [f.get("name") for f in fields[:5] if isinstance(f, dict) and f.get("name")]
+            kfields = [f.get("name") for f in fields[:5] if f.get("name")]
             kstr = ", ".join(f"`{k}`" for k in kfields) if kfields else "N/A"
             lines.append(f"- **Key Attributes**: {kstr}")
-            rel_names = [r.get("name") for r in relations if isinstance(r, dict) and r.get("name")]
+            rel_names = [r.get("name") for r in relations if r.get("name")]
             rel_str = ", ".join(f"`{r}`" for r in rel_names) if rel_names else "None"
             lines.append(f"- **Associated Relations**: {rel_str}")
             lines.append("")
@@ -124,7 +146,8 @@ def _render_modules(spec: dict[str, Any]) -> str:
 
 
 def _render_database(spec: dict[str, Any]) -> str:
-    models = spec.get("models", [])
+    spec = _as_dict(spec)
+    models = [m for m in _as_list(spec.get("models")) if isinstance(m, dict)]
     lines = [
         "# Database Schema & Data Models",
         "",
@@ -140,13 +163,13 @@ def _render_database(spec: dict[str, Any]) -> str:
         lines.append("| _None_ | _None_ | N/A | None |")
     else:
         for m in models:
-            mname = m.get("name", "Unknown")
-            table = m.get("table", "unknown")
-            fkeys = [
-                f"{f.get('name')} -> {f.get('foreign', {}).get('model', 'Unknown')}"
-                for f in m.get("fields", [])
-                if isinstance(f, dict) and isinstance(f.get("foreign"), dict)
-            ]
+            mname = m.get("name", "Unknown") or "Unknown"
+            table = m.get("table", "unknown") or "unknown"
+            fkeys: list[str] = []
+            for f in _as_list(m.get("fields")):
+                if isinstance(f, dict) and isinstance(f.get("foreign"), dict):
+                    foreign_def = f.get("foreign", {})
+                    fkeys.append(f"{f.get('name')} -> {foreign_def.get('model', 'Unknown')}")
             fkey_str = ", ".join(f"`{k}`" for k in fkeys) if fkeys else "None"
             lines.append(f"| **{mname}** | `{table}` | `id` (bigInteger) | {fkey_str} |")
 
@@ -158,10 +181,10 @@ def _render_database(spec: dict[str, Any]) -> str:
         lines.append("_No database tables defined in specification._\n")
     else:
         for m in models:
-            mname = m.get("name", "Unknown")
-            table = m.get("table", "unknown")
-            fields = m.get("fields", [])
-            relations = m.get("relations", [])
+            mname = m.get("name", "Unknown") or "Unknown"
+            table = m.get("table", "unknown") or "unknown"
+            fields = [f for f in _as_list(m.get("fields")) if isinstance(f, dict)]
+            relations = [r for r in _as_list(m.get("relations")) if isinstance(r, dict)]
 
             lines.append(f"### `{mname}` (`{table}`)")
             lines.append("")
@@ -171,8 +194,6 @@ def _render_database(spec: dict[str, Any]) -> str:
             lines.append("| :--- | :--- | :--- | :--- | :--- |")
 
             for f in fields:
-                if not isinstance(f, dict):
-                    continue
                 fname = f.get("name", "")
                 ftype = f.get("type", "string")
                 nullable = "Yes" if f.get("nullable") else "No"
@@ -184,18 +205,22 @@ def _render_database(spec: dict[str, Any]) -> str:
                 idx_str = ", ".join(idx_parts) if idx_parts else "-"
 
                 details: list[str] = []
-                if f.get("foreign"):
-                    details.append(f"FK -> {f.get('foreign', {}).get('model')}")
-                if ftype == "enum" and f.get("enum_values"):
-                    details.append(f"Values: [{', '.join(f.get('enum_values', []))}]")
+                foreign_def = f.get("foreign")
+                if isinstance(foreign_def, dict) and foreign_def.get("model"):
+                    details.append(f"FK -> {foreign_def.get('model')}")
+                if ftype == "enum":
+                    enum_vals = [str(v) for v in _as_list(f.get("enum_values")) if v is not None]
+                    if enum_vals:
+                        details.append(f"Values: [{', '.join(enum_vals)}]")
                 if ftype == "decimal":
                     prec = f.get("precision", 10)
                     scale = f.get("scale", 2)
                     details.append(f"Decimal({prec}, {scale})")
                 if ftype in ("file", "image"):
                     max_kb = f.get("max_size_kb")
-                    mimes = f.get("allowed_mimes", [])
-                    details.append(f"Max: {max_kb}KB, Mimes: {', '.join(mimes)}")
+                    mimes = [str(x) for x in _as_list(f.get("allowed_mimes")) if x]
+                    mimes_str = ", ".join(mimes) if mimes else "-"
+                    details.append(f"Max: {max_kb}KB, Mimes: {mimes_str}")
                 if f.get("pii"):
                     details.append("PII: Encrypted/Audited")
 
@@ -211,16 +236,12 @@ def _render_database(spec: dict[str, Any]) -> str:
                 lines.append("| Method | Type | Related Model | Foreign Key | Inverse Method |")
                 lines.append("| :--- | :--- | :--- | :--- | :--- |")
                 for r in relations:
-                    if not isinstance(r, dict):
-                        continue
                     rname = r.get("name", "")
                     rtype = r.get("type", "")
                     rmodel = r.get("model", "")
                     rfk = r.get("foreign_key", f"{rname}_id")
                     rinv = r.get("inverse", "-")
-                    lines.append(
-                        f"| `{rname}()` | `{rtype}` | `{rmodel}` | `{rfk}` | `{rinv}` |"
-                    )
+                    lines.append(f"| `{rname}()` | `{rtype}` | `{rmodel}` | `{rfk}` | `{rinv}` |")
 
             lines.append("")
 
@@ -228,8 +249,9 @@ def _render_database(spec: dict[str, Any]) -> str:
 
 
 def _render_roles_permissions(spec: dict[str, Any]) -> str:
-    roles = spec.get("roles", [])
-    policies = spec.get("policies", [])
+    spec = _as_dict(spec)
+    roles = [r for r in _as_list(spec.get("roles")) if isinstance(r, dict)]
+    policies = [p for p in _as_list(spec.get("policies")) if isinstance(p, dict)]
 
     lines = [
         "# Roles, Permissions & Authorization Matrix",
@@ -243,8 +265,6 @@ def _render_roles_permissions(spec: dict[str, Any]) -> str:
     ]
 
     for r in roles:
-        if not isinstance(r, dict):
-            continue
         rname = r.get("name", "")
         is_super = "Yes (Full Access)" if r.get("is_super_admin") else "No"
         desc = r.get("description", "-")
@@ -258,11 +278,9 @@ def _render_roles_permissions(spec: dict[str, Any]) -> str:
         lines.append("_No policies declared in specification._\n")
     else:
         for p in policies:
-            if not isinstance(p, dict):
-                continue
             model = p.get("model", "Unknown")
             ownership = p.get("ownership", "none")
-            abilities = p.get("abilities", {})
+            abilities = _as_dict(p.get("abilities"))
 
             lines.append(f"### `{model}` Policy (`{model}Policy`)")
             lines.append(f"- **Ownership Constraint**: `{ownership}`")
@@ -270,17 +288,17 @@ def _render_roles_permissions(spec: dict[str, Any]) -> str:
             lines.append("| Ability | Authorized Roles | Ownership Scoped |")
             lines.append("| :--- | :--- | :--- |")
 
-            sorted_abilities = sorted(abilities.keys()) if isinstance(abilities, dict) else []
+            sorted_abilities = sorted(abilities.keys())
             for ab in sorted_abilities:
                 auth_roles = abilities.get(ab, [])
                 if isinstance(auth_roles, list):
-                    role_str = ", ".join(f"`{r}`" for r in auth_roles) if auth_roles else "_None_"
+                    role_str = (
+                        ", ".join(f"`{r}`" for r in auth_roles if r) if auth_roles else "_None_"
+                    )
                 else:
                     role_str = str(auth_roles)
                 is_sc = (
-                    "Yes"
-                    if ownership != "none" and ab in ("view", "update", "delete")
-                    else "No"
+                    "Yes" if ownership != "none" and ab in ("view", "update", "delete") else "No"
                 )
                 lines.append(f"| `{ab}` | {role_str} | {is_sc} |")
 
@@ -290,8 +308,9 @@ def _render_roles_permissions(spec: dict[str, Any]) -> str:
 
 
 def _render_filament(spec: dict[str, Any]) -> str:
-    filament = spec.get("filament", {})
-    panels = filament.get("panels", []) if isinstance(filament, dict) else []
+    spec = _as_dict(spec)
+    filament = _as_dict(spec.get("filament"))
+    panels = [pan for pan in _as_list(filament.get("panels")) if isinstance(pan, dict)]
 
     lines = [
         "# Filament Admin & User Panels",
@@ -308,13 +327,11 @@ def _render_filament(spec: dict[str, Any]) -> str:
         lines.append("| _None_ | _None_ | None | 0 |")
     else:
         for pan in panels:
-            if not isinstance(pan, dict):
-                continue
             pid = pan.get("id", "admin")
             path = pan.get("path", "admin")
-            roles = pan.get("roles", [])
+            roles = [r for r in _as_list(pan.get("roles")) if r]
             role_str = ", ".join(f"`{r}`" for r in roles) if roles else "Public / All"
-            rcount = len(pan.get("resources", []))
+            rcount = len(_as_list(pan.get("resources")))
             lines.append(f"| **{pid}** | `/{path}` | {role_str} | {rcount} |")
 
     lines.append("")
@@ -325,11 +342,9 @@ def _render_filament(spec: dict[str, Any]) -> str:
         lines.append("_No Filament panels declared in specification._\n")
     else:
         for pan in panels:
-            if not isinstance(pan, dict):
-                continue
             pid = pan.get("id", "admin")
             path = pan.get("path", "admin")
-            resources = pan.get("resources", [])
+            resources = [res for res in _as_list(pan.get("resources")) if isinstance(res, dict)]
 
             lines.append(f"### Panel: `{pid}` (Route: `/{path}`)")
             lines.append("")
@@ -342,13 +357,11 @@ def _render_filament(spec: dict[str, Any]) -> str:
                 )
                 lines.append("| :--- | :--- | :--- | :--- |")
                 for res in resources:
-                    if not isinstance(res, dict):
-                        continue
                     rmodel = res.get("model", "")
                     rclass = f"{rmodel}Resource"
-                    tbl = res.get("table", {}) if isinstance(res.get("table"), dict) else {}
+                    tbl = res.get("table") if isinstance(res.get("table"), dict) else {}
                     qscope = tbl.get("query_scope", "Default (all records)")
-                    rel_mgrs = res.get("relation_managers", [])
+                    rel_mgrs = [rm for rm in _as_list(res.get("relation_managers")) if rm]
                     rel_str = ", ".join(f"`{rm}`" for rm in rel_mgrs) if rel_mgrs else "None"
                     lines.append(f"| **{rmodel}** | `{rclass}` | `{qscope}` | {rel_str} |")
 
@@ -358,10 +371,9 @@ def _render_filament(spec: dict[str, Any]) -> str:
 
 
 def _render_workflows(spec: dict[str, Any]) -> str:
-    models = spec.get("models", [])
-    models_with_states = [
-        m for m in models if isinstance(m, dict) and isinstance(m.get("states"), dict)
-    ]
+    spec = _as_dict(spec)
+    models = [m for m in _as_list(spec.get("models")) if isinstance(m, dict)]
+    models_with_states = [m for m in models if isinstance(m.get("states"), dict)]
 
     lines = [
         "# Workflows & Finite State Machines",
@@ -383,12 +395,12 @@ def _render_workflows(spec: dict[str, Any]) -> str:
 
     for m in models_with_states:
         mname = m.get("name", "")
-        st = m.get("states", {})
+        st = _as_dict(m.get("states"))
         col = st.get("field", "status")
         init = st.get("initial", "pending")
-        finals = st.get("final", [])
+        finals = [f for f in _as_list(st.get("final")) if f]
         final_str = ", ".join(f"`{f}`" for f in finals) if finals else "None"
-        tcount = len(st.get("transitions", []))
+        tcount = len(_as_list(st.get("transitions")))
         lines.append(f"| **{mname}** | `{col}` | `{init}` | {final_str} | {tcount} |")
 
     lines.append("")
@@ -397,11 +409,11 @@ def _render_workflows(spec: dict[str, Any]) -> str:
 
     for m in models_with_states:
         mname = m.get("name", "")
-        st = m.get("states", {})
+        st = _as_dict(m.get("states"))
         col = st.get("field", "status")
         init = st.get("initial", "pending")
-        finals = st.get("final", [])
-        transitions = st.get("transitions", [])
+        finals = [f for f in _as_list(st.get("final")) if f]
+        transitions = [tr for tr in _as_list(st.get("transitions")) if isinstance(tr, dict)]
         final_str = ", ".join(f"`{f}`" for f in finals) if finals else "None"
 
         lines.append(f"### `{mname}` Workflow (`{col}`)")
@@ -412,11 +424,9 @@ def _render_workflows(spec: dict[str, Any]) -> str:
         lines.append("| :--- | :--- | :--- |")
 
         for tr in transitions:
-            if not isinstance(tr, dict):
-                continue
             src = tr.get("from", "")
             dst = tr.get("to", "")
-            roles = tr.get("roles", [])
+            roles = [r for r in _as_list(tr.get("roles")) if r]
             role_str = ", ".join(f"`{r}`" for r in roles) if roles else "Any authenticated role"
             lines.append(f"| `{src}` | `{dst}` | {role_str} |")
 
@@ -426,7 +436,8 @@ def _render_workflows(spec: dict[str, Any]) -> str:
 
 
 def _render_integrations(spec: dict[str, Any]) -> str:
-    integrations = spec.get("integrations", [])
+    spec = _as_dict(spec)
+    integrations = [i for i in _as_list(spec.get("integrations")) if isinstance(i, dict)]
 
     lines = [
         "# External Integrations & Services",
@@ -443,8 +454,6 @@ def _render_integrations(spec: dict[str, Any]) -> str:
         lines.append("| _None_ | _None_ | None | No external integrations configured. |")
     else:
         for integ in integrations:
-            if not isinstance(integ, dict):
-                continue
             name = integ.get("name", "Unknown")
             kind = integ.get("kind", "service")
             provider = integ.get("provider", name)
@@ -459,8 +468,6 @@ def _render_integrations(spec: dict[str, Any]) -> str:
         lines.append("_No external integrations configured in this specification._\n")
     else:
         for integ in integrations:
-            if not isinstance(integ, dict):
-                continue
             name = integ.get("name", "Unknown")
             kind = integ.get("kind", "service")
             provider = integ.get("provider", name)
@@ -475,19 +482,18 @@ def _render_integrations(spec: dict[str, Any]) -> str:
 
 
 def _render_security(spec: dict[str, Any]) -> str:
-    proj = spec.get("project", {})
-    models = spec.get("models", [])
-    policies = spec.get("policies", [])
+    spec = _as_dict(spec)
+    proj = _as_dict(spec.get("project"))
+    models = [m for m in _as_list(spec.get("models")) if isinstance(m, dict)]
+    policies = [p for p in _as_list(spec.get("policies")) if isinstance(p, dict)]
     audit_enabled = bool(proj.get("audit_log"))
 
     pii_entries: list[tuple[str, str, str]] = []
     upload_entries: list[tuple[str, str, str, str]] = []
 
     for m in models:
-        if not isinstance(m, dict):
-            continue
         mname = m.get("name", "Unknown")
-        for f in m.get("fields", []):
+        for f in _as_list(m.get("fields")):
             if not isinstance(f, dict):
                 continue
             fname = f.get("name", "")
@@ -495,8 +501,9 @@ def _render_security(spec: dict[str, Any]) -> str:
             if f.get("pii"):
                 pii_entries.append((mname, fname, ftype))
             if ftype in ("file", "image"):
-                max_size = f"{f.get('max_size_kb', 0)} KB"
-                mimes = ", ".join(f.get("allowed_mimes", []))
+                max_size = f"{f.get('max_size_kb', 0) or 0} KB"
+                mimes_list = [str(x) for x in _as_list(f.get("allowed_mimes")) if x]
+                mimes = ", ".join(mimes_list)
                 upload_entries.append((mname, fname, max_size, mimes))
 
     lines = [
@@ -549,8 +556,6 @@ def _render_security(spec: dict[str, Any]) -> str:
         lines.append("| _None_ | No policies declared. |")
     else:
         for p in policies:
-            if not isinstance(p, dict):
-                continue
             mname = p.get("model", "Unknown")
             ownership = p.get("ownership", "none")
             lines.append(f"| **{mname}** | `{ownership}` |")
@@ -560,7 +565,8 @@ def _render_security(spec: dict[str, Any]) -> str:
 
 
 def _render_build_plan(spec: dict[str, Any]) -> str:
-    milestones = spec.get("milestones", [])
+    spec = _as_dict(spec)
+    milestones = [ms for ms in _as_list(spec.get("milestones")) if isinstance(ms, dict)]
 
     lines = [
         "# Implementation Build Plan & Milestone DAG",
@@ -577,15 +583,13 @@ def _render_build_plan(spec: dict[str, Any]) -> str:
         lines.append("| _None_ | _None_ | None | None | 0 |")
     else:
         for ms in milestones:
-            if not isinstance(ms, dict):
-                continue
             mid = ms.get("id", "M0")
             title = ms.get("title", "Untitled")
-            deps = ms.get("depends_on", [])
+            deps = [d for d in _as_list(ms.get("depends_on")) if d]
             dep_str = ", ".join(f"`{d}`" for d in deps) if deps else "None (Root)"
-            scope = ms.get("scope", [])
+            scope = [s for s in _as_list(ms.get("scope")) if s]
             scope_str = ", ".join(f"`{s}`" for s in scope) if scope else "Global / Foundation"
-            ac_count = len(ms.get("acceptance", []))
+            ac_count = len(_as_list(ms.get("acceptance")))
             lines.append(f"| **{mid}** | {title} | {dep_str} | {scope_str} | {ac_count} |")
 
     lines.append("")
@@ -596,13 +600,11 @@ def _render_build_plan(spec: dict[str, Any]) -> str:
         lines.append("_No milestones declared in specification._\n")
     else:
         for ms in milestones:
-            if not isinstance(ms, dict):
-                continue
             mid = ms.get("id", "M0")
             title = ms.get("title", "Untitled")
-            deps = ms.get("depends_on", [])
-            scope = ms.get("scope", [])
-            acceptance = ms.get("acceptance", [])
+            deps = [d for d in _as_list(ms.get("depends_on")) if d]
+            scope = [s for s in _as_list(ms.get("scope")) if s]
+            acceptance = [a for a in _as_list(ms.get("acceptance")) if a]
 
             dep_text = ", ".join(f"`{d}`" for d in deps) if deps else "None (Foundation)"
             scope_text = ", ".join(f"`{s}`" for s in scope) if scope else "Initial Setup"
@@ -625,8 +627,9 @@ def _render_build_plan(spec: dict[str, Any]) -> str:
 
 
 def _render_open_questions(spec: dict[str, Any]) -> str:
-    proj = spec.get("project", {})
-    open_questions = spec.get("open_questions", [])
+    spec = _as_dict(spec)
+    proj = _as_dict(spec.get("project"))
+    open_questions = _as_list(spec.get("open_questions"))
 
     lines = [
         "# Open Questions & Architecture Decisions",
@@ -655,8 +658,8 @@ def _render_open_questions(spec: dict[str, Any]) -> str:
                 lines.append(f"| **Q{idx}** | `General` | {q} | Under Review | `Open` |")
         lines.append("")
 
-    lv = proj.get("laravel_version", "12")
-    fv = proj.get("filament_version", "v3")
+    lv = proj.get("laravel_version", "12") or "12"
+    fv = proj.get("filament_version", "v3") or "v3"
 
     lines.append("## Technical Baseline & Assumptions")
     lines.append("")
@@ -668,26 +671,27 @@ def _render_open_questions(spec: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def render_docs(spec: dict[str, Any]) -> dict[str, str]:
+def render_docs(spec: dict[str, Any] | None) -> dict[str, str]:
     """Deterministically render all 10 markdown specification documents.
 
     Args:
-        spec: Valid specification dictionary.
+        spec: Valid specification dictionary or None.
 
     Returns:
         Mapping of document filename to rendered markdown string.
     """
+    safe_spec = _as_dict(spec)
     return {
-        "00-overview.md": _render_overview(spec),
-        "01-modules.md": _render_modules(spec),
-        "02-database.md": _render_database(spec),
-        "03-roles-permissions.md": _render_roles_permissions(spec),
-        "04-filament.md": _render_filament(spec),
-        "05-workflows.md": _render_workflows(spec),
-        "06-integrations.md": _render_integrations(spec),
-        "07-security.md": _render_security(spec),
-        "08-build-plan.md": _render_build_plan(spec),
-        "09-open-questions.md": _render_open_questions(spec),
+        "00-overview.md": _render_overview(safe_spec),
+        "01-modules.md": _render_modules(safe_spec),
+        "02-database.md": _render_database(safe_spec),
+        "03-roles-permissions.md": _render_roles_permissions(safe_spec),
+        "04-filament.md": _render_filament(safe_spec),
+        "05-workflows.md": _render_workflows(safe_spec),
+        "06-integrations.md": _render_integrations(safe_spec),
+        "07-security.md": _render_security(safe_spec),
+        "08-build-plan.md": _render_build_plan(safe_spec),
+        "09-open-questions.md": _render_open_questions(safe_spec),
     }
 
 

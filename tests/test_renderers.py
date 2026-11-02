@@ -10,9 +10,7 @@ from pathlib import Path
 from typing import Any
 
 # Ensure skills/laravel-spec/scripts is on sys.path
-SCRIPTS_DIR = (
-    Path(__file__).resolve().parent.parent / "skills" / "laravel-spec" / "scripts"
-)
+SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "skills" / "laravel-spec" / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
@@ -138,6 +136,21 @@ class TestInitSpec:
         data = json.loads(out_file.read_text(encoding="utf-8"))
         assert data["project"]["name"] == "CLI File App"
 
+    def test_init_spec_missing_template_raises_error(self) -> None:
+        import pytest
+
+        with pytest.raises(FileNotFoundError):
+            init_spec(template_path="nonexistent_template.json")
+
+    def test_init_spec_presets_preserves_template_when_omitted(self, tmp_path: Path) -> None:
+        custom_tpl = tmp_path / "custom_tpl.json"
+        custom_tpl.write_text(
+            json.dumps({"project": {"presets": ["rtl-fa", "multi-tenant"]}}),
+            encoding="utf-8",
+        )
+        spec = init_spec(template_path=custom_tpl, presets=None)
+        assert spec["project"]["presets"] == ["rtl-fa", "multi-tenant"]
+
 
 class TestRenderDocs:
     """Tests for render_docs deterministic markdown generation."""
@@ -245,6 +258,47 @@ class TestRenderDocs:
         assert proc.returncode == 0
         assert "<!-- BEGIN: 00-overview.md -->" in proc.stdout
         assert "<!-- END: 09-open-questions.md -->" in proc.stdout
+
+    def test_render_docs_robustness_with_null_and_malformed_fields(self) -> None:
+        assert len(render_docs(None)) == 10
+        assert len(render_docs({"project": None})) == 10
+        edge_spec = {
+            "project": {"name": "Edge", "presets": None},
+            "models": [
+                {
+                    "name": "Media",
+                    "fields": [
+                        {
+                            "name": "file",
+                            "type": "file",
+                            "allowed_mimes": None,
+                            "max_size_kb": None,
+                        },
+                        {
+                            "name": "status",
+                            "type": "enum",
+                            "enum_values": None,
+                        },
+                    ],
+                    "relations": None,
+                    "states": None,
+                },
+                {"name": "NoFields", "fields": None},
+            ],
+            "filament": {"panels": [{"id": "admin", "resources": None}]},
+            "milestones": None,
+            "open_questions": None,
+        }
+        docs = render_docs(edge_spec)
+        assert len(docs) == 10
+        assert "Media" in docs["01-modules.md"]
+        assert "NoFields" in docs["01-modules.md"]
+
+    def test_render_docs_nonexistent_file_raises_error(self, tmp_path: Path) -> None:
+        import pytest
+
+        with pytest.raises(FileNotFoundError):
+            render_docs_from_file(tmp_path / "missing.json", tmp_path / "out")
 
 
 class TestRenderCommands:
@@ -400,3 +454,71 @@ class TestRenderCommands:
         assert len(docs) == 10
         cmds = generate_artisan_commands(empty_spec)
         assert cmds == []
+
+    def test_render_commands_robustness_with_null_collections(self) -> None:
+        assert generate_artisan_commands(None) == []
+        assert render_commands(None)
+        null_spec = {
+            "models": [
+                {"name": "User", "fields": None, "relations": None},
+                {"name": "NullPanel", "fields": []},
+            ],
+            "filament": {"panels": [{"id": "admin", "resources": None}]},
+            "policies": [{"model": "User"}],
+        }
+        cmds = generate_artisan_commands(null_spec)
+        assert "php artisan make:model User -mfsc" in cmds
+        assert "php artisan make:policy UserPolicy --model=User" in cmds
+
+    def test_render_commands_multi_hop_chain(self) -> None:
+        # D -> C -> B -> A
+        models = [
+            {"name": "A", "fields": [{"name": "b_id", "foreign": {"model": "B"}}]},
+            {"name": "B", "fields": [{"name": "c_id", "foreign": {"model": "C"}}]},
+            {"name": "C", "fields": [{"name": "d_id", "foreign": {"model": "D"}}]},
+            {"name": "D", "fields": []},
+        ]
+        sorted_m = sort_models_by_dependency(models)
+        order = [m["name"] for m in sorted_m]
+        assert order == ["D", "C", "B", "A"]
+
+    def test_render_commands_self_referencing_foreign_key(self) -> None:
+        models = [
+            {
+                "name": "Category",
+                "fields": [
+                    {"name": "parent_id", "foreign": {"model": "Category"}},
+                ],
+            }
+        ]
+        sorted_m = sort_models_by_dependency(models)
+        assert len(sorted_m) == 1
+        assert sorted_m[0]["name"] == "Category"
+
+    def test_render_commands_deduplication(self) -> None:
+        spec = {
+            "project": {"name": "Dedup App"},
+            "models": [{"name": "Item", "fields": []}],
+            "policies": [{"model": "Item"}, {"model": "Item"}],
+            "filament": {
+                "panels": [
+                    {
+                        "id": "admin",
+                        "resources": [{"model": "Item"}, {"model": "Item"}],
+                    },
+                    {
+                        "id": "partner",
+                        "resources": [{"model": "Item"}],
+                    },
+                    {
+                        "id": "partner",
+                        "resources": [],
+                    },
+                ]
+            },
+        }
+        cmds = generate_artisan_commands(spec)
+        assert cmds.count("php artisan make:filament-panel partner") == 1
+        assert cmds.count("php artisan make:policy ItemPolicy --model=Item") == 1
+        assert cmds.count("php artisan make:filament-resource Item") == 1
+        assert cmds.count("php artisan make:filament-resource Item --panel=partner") == 1

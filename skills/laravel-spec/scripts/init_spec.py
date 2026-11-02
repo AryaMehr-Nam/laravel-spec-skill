@@ -13,9 +13,7 @@ from pathlib import Path
 from typing import Any
 
 # Default path to bundled empty-spec.json template
-DEFAULT_TEMPLATE_PATH = (
-    Path(__file__).resolve().parent.parent / "templates" / "empty-spec.json"
-)
+DEFAULT_TEMPLATE_PATH = Path(__file__).resolve().parent.parent / "templates" / "empty-spec.json"
 
 
 def get_default_skeleton(
@@ -91,12 +89,16 @@ def init_spec(
     Returns:
         Structured specification dictionary.
     """
-    tpl_file = Path(template_path) if template_path else DEFAULT_TEMPLATE_PATH
-
-    if tpl_file.is_file():
+    if template_path:
+        tpl_file = Path(template_path).resolve()
+        if not tpl_file.is_file():
+            raise FileNotFoundError(f"Custom template file not found: {template_path}")
+        with open(tpl_file, encoding="utf-8") as f:
+            spec: dict[str, Any] = json.load(f)
+    elif DEFAULT_TEMPLATE_PATH.is_file():
         try:
-            with open(tpl_file, encoding="utf-8") as f:
-                spec: dict[str, Any] = json.load(f)
+            with open(DEFAULT_TEMPLATE_PATH, encoding="utf-8") as f:
+                spec = json.load(f)
         except Exception:
             spec = get_default_skeleton()
     else:
@@ -115,7 +117,7 @@ def init_spec(
 
     if presets is not None:
         spec["project"]["presets"] = list(presets)
-    elif "presets" not in spec["project"]:
+    elif not isinstance(spec["project"].get("presets"), list):
         spec["project"]["presets"] = []
 
     for section in ("roles", "models", "policies", "integrations", "milestones"):
@@ -124,7 +126,7 @@ def init_spec(
 
     if "filament" not in spec or not isinstance(spec["filament"], dict):
         spec["filament"] = {"panels": []}
-    elif "panels" not in spec["filament"]:
+    elif not isinstance(spec["filament"].get("panels"), list):
         spec["filament"]["panels"] = []
 
     # Ensure super-admin role exists if roles is empty
@@ -177,8 +179,7 @@ def write_spec(
 
     if dest.exists() and not force:
         raise FileExistsError(
-            f"Target specification file already exists at '{dest}'. "
-            "Use --force to overwrite."
+            f"Target specification file already exists at '{dest}'. Use --force to overwrite."
         )
 
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -225,7 +226,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--presets",
         nargs="*",
-        default=[],
+        default=None,
         help="Preset identifiers (e.g. rtl-fa iran-payments otp-login multi-tenant)",
     )
     parser.add_argument(
@@ -255,9 +256,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     # Flatten presets in case comma-separated strings were passed
-    presets: list[str] = []
-    for p in args.presets:
-        presets.extend([item.strip() for item in p.split(",") if item.strip()])
+    presets: list[str] | None = None
+    if args.presets is not None:
+        presets = []
+        for p in args.presets:
+            presets.extend([item.strip() for item in p.split(",") if item.strip()])
 
     spec = init_spec(
         name=args.name,

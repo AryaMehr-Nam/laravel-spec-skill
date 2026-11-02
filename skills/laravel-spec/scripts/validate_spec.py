@@ -204,9 +204,7 @@ class SpecValidator:
 
         required_top_level = ["project", "roles", "models", "policies", "filament", "milestones"]
         missing = [
-            key
-            for key in required_top_level
-            if key not in self.spec or self.spec[key] is None
+            key for key in required_top_level if key not in self.spec or self.spec[key] is None
         ]
         if missing:
             for key in missing:
@@ -445,11 +443,7 @@ class SpecValidator:
                             inv_rel = target_rels[inverse]
                             inv_target = inv_rel.get("model")
                             inv_type = inv_rel.get("type")
-                            if (
-                                inv_target
-                                and inv_target != mname
-                                and inv_type != "morphTo"
-                            ):
+                            if inv_target and inv_target != mname and inv_type != "morphTo":
                                 self._add_violation(
                                     rule_id="REL_002",
                                     severity=Severity.ERROR,
@@ -509,9 +503,7 @@ class SpecValidator:
         models = self._as_list(self.spec.get("models"))
         declared_roles = {r.get("name") for r in roles if isinstance(r, dict) and r.get("name")}
         super_admin_roles = {
-            r.get("name")
-            for r in roles
-            if isinstance(r, dict) and r.get("is_super_admin") is True
+            r.get("name") for r in roles if isinstance(r, dict) and r.get("is_super_admin") is True
         }
 
         if not super_admin_roles:
@@ -529,9 +521,7 @@ class SpecValidator:
         referenced_roles: set[str] = set()
 
         policies = self._as_list(self.spec.get("policies"))
-        policy_models = {
-            p.get("model") for p in policies if isinstance(p, dict) and p.get("model")
-        }
+        policy_models = {p.get("model") for p in policies if isinstance(p, dict) and p.get("model")}
 
         for pidx, policy in enumerate(policies):
             if not isinstance(policy, dict):
@@ -585,9 +575,7 @@ class SpecValidator:
                     self._add_violation(
                         rule_id="AUTH_006",
                         severity=Severity.ERROR,
-                        message=(
-                            f"Filament panel '{pid}' references undeclared role '{r}'."
-                        ),
+                        message=(f"Filament panel '{pid}' references undeclared role '{r}'."),
                         path=f"filament.panels[{pidx}].roles",
                         fix_hint=(
                             f"Declare role '{r}' in roles array or remove it from panel '{pid}'."
@@ -668,13 +656,9 @@ class SpecValidator:
                 self._add_violation(
                     rule_id="SM_001",
                     severity=Severity.ERROR,
-                    message=(
-                        f"State machine field '{field_name}' not found in model '{mname}'."
-                    ),
+                    message=(f"State machine field '{field_name}' not found in model '{mname}'."),
                     path=f"models[{midx}].states.field",
-                    fix_hint=(
-                        f"Add field '{field_name}' to fields array of model '{mname}'."
-                    ),
+                    fix_hint=(f"Add field '{field_name}' to fields array of model '{mname}'."),
                 )
 
             initial = states.get("initial")
@@ -713,8 +697,7 @@ class SpecValidator:
 
             if initial:
                 has_initial_outgoing = any(
-                    isinstance(t, dict) and t.get("from") in (initial, "*")
-                    for t in transitions
+                    isinstance(t, dict) and t.get("from") in (initial, "*") for t in transitions
                 )
                 if not has_initial_outgoing and all_states != {initial}:
                     self._add_violation(
@@ -755,17 +738,14 @@ class SpecValidator:
                             f"state '{initial}'."
                         ),
                         path=f"models[{midx}].states",
-                        fix_hint=(
-                            f"Add a transition leading to state '{u_state}' or remove it."
-                        ),
+                        fix_hint=(f"Add a transition leading to state '{u_state}' or remove it."),
                     )
 
             # Check non-terminal states for outgoing transitions (SM_004)
             for state in sorted(all_states):
                 if state not in finals:
                     has_outgoing = any(
-                        isinstance(t, dict) and t.get("from") in (state, "*")
-                        for t in transitions
+                        isinstance(t, dict) and t.get("from") in (state, "*") for t in transitions
                     )
                     if not has_outgoing:
                         self._add_violation(
@@ -803,11 +783,10 @@ class SpecValidator:
                                 can_reach_terminal.add(f)
                                 changed = True
 
-                scope_states = (reachable if initial else all_states)
+                scope_states = reachable if initial else all_states
                 for state in sorted(scope_states - can_reach_terminal):
                     has_outgoing = any(
-                        isinstance(t, dict) and t.get("from") in (state, "*")
-                        for t in transitions
+                        isinstance(t, dict) and t.get("from") in (state, "*") for t in transitions
                     )
                     if has_outgoing:
                         self._add_violation(
@@ -937,6 +916,7 @@ class SpecValidator:
                         isinstance(enum_vals, list)
                         and len(enum_vals) > 0
                         and all(isinstance(v, str) and v.strip() for v in enum_vals)
+                        and len(set(v.strip() for v in enum_vals)) == len(enum_vals)
                     )
                     if not is_valid:
                         self._add_violation(
@@ -944,11 +924,11 @@ class SpecValidator:
                             severity=Severity.ERROR,
                             message=(
                                 f"Enum field '{fname}' on model '{mname}' must define a "
-                                "non-empty 'enum_values' list with valid string values."
+                                "non-empty 'enum_values' list with valid unique string values."
                             ),
                             path=f"models[{midx}].fields[{fidx}].enum_values",
                             fix_hint=(
-                                f"Define 'enum_values' as a non-empty list of strings on "
+                                f"Define 'enum_values' as a non-empty list of unique strings on "
                                 f"field '{fname}' (e.g. ['active', 'inactive', 'pending'])."
                             ),
                         )
@@ -990,9 +970,7 @@ class SpecValidator:
                     self._add_violation(
                         rule_id="DAG_002",
                         severity=Severity.ERROR,
-                        message=(
-                            f"Milestone '{mid}' depends on non-existent milestone '{dep}'."
-                        ),
+                        message=(f"Milestone '{mid}' depends on non-existent milestone '{dep}'."),
                         path=f"milestones[{midx}].depends_on",
                         fix_hint=(
                             f"Declare milestone '{dep}' in milestones array or remove it from "
@@ -1024,9 +1002,7 @@ class SpecValidator:
                     f"{', '.join(sorted(cycle_nodes))}."
                 ),
                 path="milestones",
-                fix_hint=(
-                    "Restructure milestone depends_on chains to ensure an acyclic graph."
-                ),
+                fix_hint=("Restructure milestone depends_on chains to ensure an acyclic graph."),
             )
 
         scoped_entities: set[str] = set()
@@ -1043,9 +1019,7 @@ class SpecValidator:
                     self._add_violation(
                         rule_id="DAG_003",
                         severity=Severity.WARNING,
-                        message=(
-                            f"Model '{mname}' is not covered in the scope of any milestone."
-                        ),
+                        message=(f"Model '{mname}' is not covered in the scope of any milestone."),
                         path=f"models[{midx}]",
                         fix_hint=(
                             f"Add model '{mname}' to the 'scope' array of the milestone "

@@ -10,9 +10,7 @@ from pathlib import Path
 import pytest
 
 # Ensure skills/laravel-spec/scripts is on sys.path
-SCRIPTS_DIR = (
-    Path(__file__).resolve().parent.parent / "skills" / "laravel-spec" / "scripts"
-)
+SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "skills" / "laravel-spec" / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
@@ -228,10 +226,8 @@ class TestEdgeCasesAndFileHandling:
                 {
                     "name": "Comment",
                     "table": "comments",
-                    "fields": [{ "name": "id", "type": "bigInteger" }],
-                    "relations": [
-                        { "name": "commentable", "type": "morphTo", "model": "*" }
-                    ],
+                    "fields": [{"name": "id", "type": "bigInteger"}],
+                    "relations": [{"name": "commentable", "type": "morphTo", "model": "*"}],
                 }
             ],
             "policies": [
@@ -247,7 +243,7 @@ class TestEdgeCasesAndFileHandling:
                     },
                 }
             ],
-            "filament": { "panels": [] },
+            "filament": {"panels": []},
             "milestones": [
                 {
                     "id": "M0",
@@ -278,24 +274,24 @@ class TestEdgeCasesAndFileHandling:
                     "name": "Ticket",
                     "table": "tickets",
                     "fields": [
-                        { "name": "id", "type": "bigInteger" },
-                        { "name": "status", "type": "string" },
+                        {"name": "id", "type": "bigInteger"},
+                        {"name": "status", "type": "string"},
                     ],
                     "states": {
                         "field": "status",
                         "initial": "open",
                         "final": ["resolved"],
                         "transitions": [
-                            { "from": "open", "to": "in_progress", "roles": ["super-admin"] },
-                            { "from": "in_progress", "to": "review", "roles": ["super-admin"] },
-                            { "from": "review", "to": "in_progress", "roles": ["super-admin"] },
-                            { "from": "review", "to": "resolved", "roles": ["super-admin"] },
+                            {"from": "open", "to": "in_progress", "roles": ["super-admin"]},
+                            {"from": "in_progress", "to": "review", "roles": ["super-admin"]},
+                            {"from": "review", "to": "in_progress", "roles": ["super-admin"]},
+                            {"from": "review", "to": "resolved", "roles": ["super-admin"]},
                         ],
                     },
                 }
             ],
             "policies": [],
-            "filament": { "panels": [] },
+            "filament": {"panels": []},
             "milestones": [
                 {
                     "id": "M0",
@@ -326,7 +322,7 @@ class TestEdgeCasesAndFileHandling:
                     "name": "Item",
                     "table": "items",
                     "fields": [
-                        { "name": "id", "type": "bigInteger" },
+                        {"name": "id", "type": "bigInteger"},
                         {
                             "name": "price",
                             "type": "decimal",
@@ -337,7 +333,7 @@ class TestEdgeCasesAndFileHandling:
                 }
             ],
             "policies": [],
-            "filament": { "panels": [] },
+            "filament": {"panels": []},
             "milestones": [
                 {
                     "id": "M0",
@@ -368,7 +364,7 @@ class TestEdgeCasesAndFileHandling:
             "roles": [{"name": "super-admin", "is_super_admin": True}],
             "models": [],
             "policies": [],
-            "filament": { "panels": [] },
+            "filament": {"panels": []},
             "milestones": [
                 # Cluster 1: Valid chain
                 {
@@ -493,6 +489,14 @@ class TestEnumValidation:
 
     def test_blank_string_enum_values_fails(self) -> None:
         spec = self._base_spec({"name": "status", "type": "enum", "enum_values": ["   "]})
+        res = validate_spec(spec)
+        assert res.is_valid is False
+        assert any(v.rule_id == "ENUM_001" for v in res.errors)
+
+    def test_duplicate_enum_values_fails(self) -> None:
+        spec = self._base_spec(
+            {"name": "status", "type": "enum", "enum_values": ["draft", "draft"]}
+        )
         res = validate_spec(spec)
         assert res.is_valid is False
         assert any(v.rule_id == "ENUM_001" for v in res.errors)

@@ -16,6 +16,20 @@ from pathlib import Path
 from typing import Any
 
 
+def _as_list(val: Any) -> list[Any]:
+    """Ensure value is a list; otherwise return empty list."""
+    if isinstance(val, list):
+        return val
+    return []
+
+
+def _as_dict(val: Any) -> dict[str, Any]:
+    """Ensure value is a dictionary; otherwise return empty dictionary."""
+    if isinstance(val, dict):
+        return val
+    return {}
+
+
 def _studly(name: str) -> str:
     """Convert snake_case or kebab-case to StudlyCase."""
     clean = name.replace("-", "_")
@@ -28,33 +42,30 @@ def sort_models_by_dependency(models: list[dict[str, Any]]) -> list[dict[str, An
     If dependencies form a cycle or cannot be resolved, falls back gracefully
     to original declaration order.
     """
-    model_names = [m.get("name") for m in models if isinstance(m, dict) and m.get("name")]
+    valid_models = [m for m in _as_list(models) if isinstance(m, dict) and m.get("name")]
+    model_names = [str(m.get("name")) for m in valid_models]
     model_set = set(model_names)
-    model_by_name = {m.get("name"): m for m in models if isinstance(m, dict) and m.get("name")}
+    model_by_name = {str(m.get("name")): m for m in valid_models}
 
     in_degree: dict[str, int] = {name: 0 for name in model_names}
     adj: dict[str, list[str]] = {name: [] for name in model_names}
 
-    for m in models:
-        if not isinstance(m, dict):
-            continue
-        mname = m.get("name")
-        if not mname:
-            continue
+    for m in valid_models:
+        mname = str(m.get("name"))
 
         # Look for referenced foreign models
         dep_names: set[str] = set()
-        for f in m.get("fields", []):
+        for f in _as_list(m.get("fields")):
             if isinstance(f, dict) and isinstance(f.get("foreign"), dict):
                 target = f.get("foreign", {}).get("model")
-                if target and target in model_set and target != mname:
-                    dep_names.add(target)
+                if target and str(target) in model_set and str(target) != mname:
+                    dep_names.add(str(target))
 
-        for r in m.get("relations", []):
+        for r in _as_list(m.get("relations")):
             if isinstance(r, dict) and r.get("type") in ("belongsTo", "morphTo"):
                 target = r.get("model")
-                if target and target in model_set and target != mname:
-                    dep_names.add(target)
+                if target and str(target) in model_set and str(target) != mname:
+                    dep_names.add(str(target))
 
         # target must be created before mname: edge target -> mname
         for dep in sorted(dep_names):
@@ -80,34 +91,38 @@ def sort_models_by_dependency(models: list[dict[str, Any]]) -> list[dict[str, An
     return [model_by_name[name] for name in ordered_names if name in model_by_name]
 
 
-def generate_artisan_commands(spec: dict[str, Any]) -> list[str]:
+def generate_artisan_commands(spec: dict[str, Any] | None) -> list[str]:
     """Generate ordered list of artisan commands from specification.
 
     Args:
-        spec: Valid specification dictionary.
+        spec: Valid specification dictionary or None.
 
     Returns:
         List of command strings ready for inspection or script execution.
     """
     commands: list[str] = []
+    safe_spec = _as_dict(spec)
 
-    models = [m for m in spec.get("models", []) if isinstance(m, dict) and m.get("name")]
-    policies = [p for p in spec.get("policies", []) if isinstance(p, dict) and p.get("model")]
-    filament = spec.get("filament", {})
-    panels = filament.get("panels", []) if isinstance(filament, dict) else []
+    models = [m for m in _as_list(safe_spec.get("models")) if isinstance(m, dict) and m.get("name")]
+    policies = [
+        p for p in _as_list(safe_spec.get("policies")) if isinstance(p, dict) and p.get("model")
+    ]
+    filament = _as_dict(safe_spec.get("filament"))
+    panels = [pan for pan in _as_list(filament.get("panels")) if isinstance(pan, dict)]
 
     # 1. Filament Panels (skip default 'admin' if only admin, or create explicit)
+    created_panels: set[str] = set()
     for pan in panels:
-        if isinstance(pan, dict) and pan.get("id"):
-            pid = pan.get("id")
-            if pid != "admin":
-                commands.append(f"php artisan make:filament-panel {pid}")
+        pid = pan.get("id")
+        if pid and pid != "admin" and pid not in created_panels:
+            commands.append(f"php artisan make:filament-panel {pid}")
+            created_panels.add(pid)
 
     # 2. Enums (for enum fields defined on models)
     created_enums: set[str] = set()
     for m in models:
         mname = m.get("name", "")
-        for f in m.get("fields", []):
+        for f in _as_list(m.get("fields")):
             if isinstance(f, dict) and str(f.get("type", "")).lower() == "enum":
                 fname = f.get("name", "")
                 enum_name = f"{mname}{_studly(fname)}Enum"
@@ -122,18 +137,24 @@ def generate_artisan_commands(spec: dict[str, Any]) -> list[str]:
         commands.append(f"php artisan make:model {mname} -mfsc")
 
     # 4. Authorization Policies
+    created_policies: set[str] = set()
     for pol in policies:
         mname = pol.get("model")
-        commands.append(f"php artisan make:policy {mname}Policy --model={mname}")
+        if mname and mname not in created_policies:
+            commands.append(f"php artisan make:policy {mname}Policy --model={mname}")
+            created_policies.add(mname)
 
     # 5. Filament Resources
+    created_resources: set[tuple[str, str]] = set()
     for pan in panels:
-        if not isinstance(pan, dict):
-            continue
-        pid = pan.get("id", "admin")
-        for res in pan.get("resources", []):
+        pid = pan.get("id", "admin") or "admin"
+        for res in _as_list(pan.get("resources")):
             if isinstance(res, dict) and res.get("model"):
                 mname = res.get("model")
+                res_key = (pid, str(mname))
+                if res_key in created_resources:
+                    continue
+                created_resources.add(res_key)
                 if pid == "admin":
                     commands.append(f"php artisan make:filament-resource {mname}")
                 else:
@@ -142,10 +163,11 @@ def generate_artisan_commands(spec: dict[str, Any]) -> list[str]:
     return commands
 
 
-def render_shell_script(spec: dict[str, Any], commands: list[str]) -> str:
+def render_shell_script(spec: dict[str, Any] | None, commands: list[str]) -> str:
     """Render commands into a structured executable shell script format."""
-    proj = spec.get("project", {})
-    proj_name = proj.get("name", "Laravel Application")
+    safe_spec = _as_dict(spec)
+    proj = _as_dict(safe_spec.get("project"))
+    proj_name = proj.get("name", "Laravel Application") or "Laravel Application"
 
     lines = [
         "#!/usr/bin/env bash",
@@ -167,31 +189,31 @@ def render_shell_script(spec: dict[str, Any], commands: list[str]) -> str:
     resource_cmds = [c for c in commands if "make:filament-resource" in c]
 
     if panel_cmds:
-        lines.append('# Step 1: Filament Panels')
+        lines.append("# Step 1: Filament Panels")
         for c in panel_cmds:
             lines.append(c)
         lines.append("")
 
     if enum_cmds:
-        lines.append('# Step 2: Enums')
+        lines.append("# Step 2: Enums")
         for c in enum_cmds:
             lines.append(c)
         lines.append("")
 
     if model_cmds:
-        lines.append('# Step 3: Eloquent Models & Migrations (-mfsc)')
+        lines.append("# Step 3: Eloquent Models & Migrations (-mfsc)")
         for c in model_cmds:
             lines.append(c)
         lines.append("")
 
     if policy_cmds:
-        lines.append('# Step 4: Authorization Policies')
+        lines.append("# Step 4: Authorization Policies")
         for c in policy_cmds:
             lines.append(c)
         lines.append("")
 
     if resource_cmds:
-        lines.append('# Step 5: Filament Resources')
+        lines.append("# Step 5: Filament Resources")
         for c in resource_cmds:
             lines.append(c)
         lines.append("")
@@ -201,11 +223,11 @@ def render_shell_script(spec: dict[str, Any], commands: list[str]) -> str:
     return "\n".join(lines)
 
 
-def render_commands(spec: dict[str, Any], format_type: str = "shell") -> str:
+def render_commands(spec: dict[str, Any] | None, format_type: str = "shell") -> str:
     """Render artisan commands in specified format ('shell', 'list', 'json').
 
     Args:
-        spec: Valid specification dictionary.
+        spec: Valid specification dictionary or None.
         format_type: Output format: 'shell' (bash script), 'list' (lines), or 'json'.
 
     Returns:

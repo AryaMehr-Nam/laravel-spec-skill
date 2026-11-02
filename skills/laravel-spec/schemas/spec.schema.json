@@ -140,8 +140,11 @@
                 "enum_values": {
                   "type": "array",
                   "description": "Allowed enum values if type is 'enum'",
+                  "minItems": 1,
+                  "uniqueItems": true,
                   "items": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "foreign": {
@@ -470,6 +473,27 @@
             }
           }
         }
+      }
+    },
+    "open_questions": {
+      "type": "array",
+      "description": "Architectural inquiries, assumptions, or pending decisions",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "category": { "type": "string" },
+              "question": { "type": "string" },
+              "resolution": { "type": "string" },
+              "status": { "type": "string" }
+            }
+          },
+          {
+            "type": "string"
+          }
+        ]
       }
     }
   }
