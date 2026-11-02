@@ -13,15 +13,23 @@ if str(_SKILL_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SKILL_SCRIPTS_DIR))
 
 from render_commands import (  # noqa: E402
-    CommandGenerator,
-    generate_all_commands,
+    generate_artisan_commands,
     main,
+    render_commands,
+    sort_models_by_dependency,
 )
+
+# Convenience aliases
+CommandGenerator = render_commands
+generate_all_commands = render_commands
 
 __all__ = [
     "CommandGenerator",
     "generate_all_commands",
+    "generate_artisan_commands",
     "main",
+    "render_commands",
+    "sort_models_by_dependency",
 ]
 
 if __name__ == "__main__":

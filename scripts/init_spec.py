@@ -13,15 +13,25 @@ if str(_SKILL_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SKILL_SCRIPTS_DIR))
 
 from init_spec import (  # noqa: E402
-    SpecInitializer,
-    init_spec_project,
+    DEFAULT_TEMPLATE_PATH,
+    get_default_skeleton,
+    init_spec,
     main,
+    write_spec,
 )
 
+# Convenience aliases
+SpecInitializer = init_spec
+init_spec_project = init_spec
+
 __all__ = [
+    "DEFAULT_TEMPLATE_PATH",
     "SpecInitializer",
+    "get_default_skeleton",
+    "init_spec",
     "init_spec_project",
     "main",
+    "write_spec",
 ]
 
 if __name__ == "__main__":

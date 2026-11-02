@@ -13,15 +13,25 @@ if str(_SKILL_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SKILL_SCRIPTS_DIR))
 
 from render_docs import (  # noqa: E402
-    DocsRenderer,
+    DOC_FILENAMES,
     main,
-    render_all_docs,
+    render_docs,
+    render_docs_from_file,
+    write_docs,
 )
 
+# Convenience aliases
+DocsRenderer = render_docs
+render_all_docs = render_docs
+
 __all__ = [
+    "DOC_FILENAMES",
     "DocsRenderer",
     "main",
     "render_all_docs",
+    "render_docs",
+    "render_docs_from_file",
+    "write_docs",
 ]
 
 if __name__ == "__main__":
