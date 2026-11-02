@@ -1,0 +1,38 @@
+{
+  "project": {
+    "name": "Missing Policy for Filament Resource",
+    "description": "Filament resource lacks corresponding model policy",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "roles": [
+    { "name": "super-admin", "description": "Admin", "is_super_admin": true }
+  ],
+  "models": [
+    { "name": "Order", "table": "orders", "fields": [{ "name": "id", "type": "bigInteger" }] }
+  ],
+  "policies": [],
+  "filament": {
+    "panels": [
+      {
+        "id": "admin",
+        "path": "admin",
+        "roles": ["super-admin"],
+        "resources": [
+          { "model": "Order", "table": {} }
+        ]
+      }
+    ]
+  },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Setup",
+      "depends_on": [],
+      "scope": ["Order"],
+      "acceptance": ["Acc 1", "Acc 2"]
+    }
+  ]
+}

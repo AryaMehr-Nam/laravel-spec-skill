@@ -1,0 +1,36 @@
+{
+  "project": {
+    "name": "Duplicate Table Spec",
+    "description": "Two models sharing the same database table",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "roles": [
+    { "name": "super-admin", "description": "Admin", "is_super_admin": true }
+  ],
+  "models": [
+    {
+      "name": "User",
+      "table": "users",
+      "fields": [{ "name": "id", "type": "bigInteger" }]
+    },
+    {
+      "name": "Account",
+      "table": "users",
+      "fields": [{ "name": "id", "type": "bigInteger" }]
+    }
+  ],
+  "policies": [],
+  "filament": { "panels": [] },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Setup",
+      "depends_on": [],
+      "scope": ["User", "Account"],
+      "acceptance": ["Acc 1", "Acc 2"]
+    }
+  ]
+}

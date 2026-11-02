@@ -1,0 +1,57 @@
+{
+  "project": {
+    "name": "Missing Query Scope",
+    "description": "Filament resource lacks query scope for ownership-scoped model",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "roles": [
+    { "name": "super-admin", "description": "Admin", "is_super_admin": true }
+  ],
+  "models": [
+    {
+      "name": "Note",
+      "table": "notes",
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        { "name": "user_id", "type": "bigInteger", "index": true }
+      ]
+    }
+  ],
+  "policies": [
+    {
+      "model": "Note",
+      "ownership": "owner_field:user_id",
+      "abilities": {
+        "viewAny": ["super-admin"],
+        "view": ["super-admin"],
+        "create": ["super-admin"],
+        "update": ["super-admin"],
+        "delete": ["super-admin"]
+      }
+    }
+  ],
+  "filament": {
+    "panels": [
+      {
+        "id": "admin",
+        "path": "admin",
+        "roles": ["super-admin"],
+        "resources": [
+          { "model": "Note", "table": {} }
+        ]
+      }
+    ]
+  },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Setup",
+      "depends_on": [],
+      "scope": ["Note"],
+      "acceptance": ["Acc 1", "Acc 2"]
+    }
+  ]
+}

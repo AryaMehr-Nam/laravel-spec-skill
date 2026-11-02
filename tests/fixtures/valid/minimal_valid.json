@@ -1,0 +1,35 @@
+{
+  "project": {
+    "name": "Minimal Spec",
+    "description": "Minimal valid specification for testing",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "roles": [
+    {
+      "name": "super-admin",
+      "description": "Root administrator with full system privileges",
+      "is_super_admin": true
+    }
+  ],
+  "models": [],
+  "policies": [],
+  "filament": {
+    "panels": []
+  },
+  "integrations": [],
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Initial Setup",
+      "depends_on": [],
+      "scope": [],
+      "acceptance": [
+        "Repository and core dependencies installed",
+        "Base migration runs successfully"
+      ]
+    }
+  ]
+}

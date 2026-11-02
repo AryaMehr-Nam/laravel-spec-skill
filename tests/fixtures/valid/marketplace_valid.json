@@ -1,0 +1,176 @@
+{
+  "project": {
+    "name": "Marketplace Pro",
+    "description": "Multi-vendor marketplace application",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3",
+    "audit_log": true
+  },
+  "roles": [
+    {
+      "name": "super-admin",
+      "description": "Administrator with full system access",
+      "is_super_admin": true
+    },
+    {
+      "name": "vendor",
+      "description": "Store owner selling merchandise"
+    },
+    {
+      "name": "customer",
+      "description": "Registered buyer"
+    }
+  ],
+  "models": [
+    {
+      "name": "User",
+      "table": "users",
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        { "name": "name", "type": "string" },
+        { "name": "email", "type": "string", "unique": true, "pii": true },
+        { "name": "phone", "type": "string", "pii": true }
+      ],
+      "relations": [
+        { "name": "products", "type": "hasMany", "model": "Product", "inverse": "vendor" }
+      ]
+    },
+    {
+      "name": "Product",
+      "table": "products",
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        {
+          "name": "vendor_id",
+          "type": "bigInteger",
+          "index": true,
+          "foreign": { "model": "User" }
+        },
+        { "name": "title", "type": "string" },
+        { "name": "price", "type": "decimal", "precision": 12, "scale": 2 },
+        {
+          "name": "cover_image",
+          "type": "image",
+          "max_size_kb": 2048,
+          "allowed_mimes": ["image/jpeg", "image/png"]
+        }
+      ],
+      "relations": [
+        { "name": "vendor", "type": "belongsTo", "model": "User", "inverse": "products" }
+      ]
+    },
+    {
+      "name": "Order",
+      "table": "orders",
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        {
+          "name": "customer_id",
+          "type": "bigInteger",
+          "index": true,
+          "foreign": { "model": "User" }
+        },
+        { "name": "total_amount", "type": "decimal", "precision": 12, "scale": 2 },
+        { "name": "status", "type": "string" }
+      ],
+      "relations": [
+        { "name": "customer", "type": "belongsTo", "model": "User" }
+      ],
+      "states": {
+        "field": "status",
+        "initial": "pending",
+        "final": ["completed", "cancelled"],
+        "transitions": [
+          { "from": "pending", "to": "completed", "roles": ["vendor"] },
+          { "from": "pending", "to": "cancelled", "roles": ["customer"] }
+        ]
+      }
+    }
+  ],
+  "policies": [
+    {
+      "model": "User",
+      "ownership": "none",
+      "abilities": {
+        "viewAny": ["super-admin"],
+        "view": ["super-admin", "customer"],
+        "create": ["super-admin"],
+        "update": ["super-admin", "customer"],
+        "delete": ["super-admin"]
+      }
+    },
+    {
+      "model": "Product",
+      "ownership": "owner_field:vendor_id",
+      "abilities": {
+        "viewAny": ["vendor", "super-admin"],
+        "view": ["vendor", "super-admin", "customer"],
+        "create": ["vendor", "super-admin"],
+        "update": ["vendor", "super-admin"],
+        "delete": ["vendor", "super-admin"]
+      }
+    },
+    {
+      "model": "Order",
+      "ownership": "owner_field:customer_id",
+      "abilities": {
+        "viewAny": ["customer", "vendor", "super-admin"],
+        "view": ["customer", "vendor", "super-admin"],
+        "create": ["customer"],
+        "update": ["vendor", "super-admin"],
+        "delete": ["super-admin"]
+      }
+    }
+  ],
+  "filament": {
+    "panels": [
+      {
+        "id": "admin",
+        "path": "admin",
+        "roles": ["super-admin"],
+        "resources": [
+          { "model": "User", "table": {} },
+          { "model": "Product", "table": { "query_scope": "scopedToVendor" } },
+          { "model": "Order", "table": { "query_scope": "scopedToCustomer" } }
+        ]
+      }
+    ]
+  },
+  "integrations": [
+    { "name": "activity_log", "kind": "audit_log" }
+  ],
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Auth & Users",
+      "depends_on": [],
+      "scope": ["User"],
+      "acceptance": [
+        "User registration and role assignment pass tests",
+        "Database seeds super-admin properly"
+      ]
+    },
+    {
+      "id": "M1",
+      "title": "Products Catalog",
+      "depends_on": ["M0"],
+      "scope": ["Product"],
+      "acceptance": [
+        "Vendor product CRUD passes validation",
+        "Cover image upload enforces 2MB constraint"
+      ]
+    },
+    {
+      "id": "M2",
+      "title": "Orders & Checkout",
+      "depends_on": ["M1"],
+      "scope": ["Order"],
+      "acceptance": [
+        "Order transitions from pending to completed or cancelled",
+        "Ownership scoping restricts orders by customer"
+      ]
+    }
+  ]
+}

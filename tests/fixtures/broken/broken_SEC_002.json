@@ -1,0 +1,34 @@
+{
+  "project": {
+    "name": "Unconstrained Upload Spec",
+    "description": "Upload field missing size and mime restrictions",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "roles": [
+    { "name": "super-admin", "description": "Admin", "is_super_admin": true }
+  ],
+  "models": [
+    {
+      "name": "Document",
+      "table": "documents",
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        { "name": "file_path", "type": "file" }
+      ]
+    }
+  ],
+  "policies": [],
+  "filament": { "panels": [] },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Setup",
+      "depends_on": [],
+      "scope": ["Document"],
+      "acceptance": ["Acc 1", "Acc 2"]
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "project": {
+    "name": "Circular DAG Spec",
+    "description": "Milestone circular dependency cycle",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "roles": [
+    { "name": "super-admin", "description": "Admin", "is_super_admin": true }
+  ],
+  "models": [],
+  "policies": [],
+  "filament": { "panels": [] },
+  "milestones": [
+    {
+      "id": "M1",
+      "title": "Milestone 1",
+      "depends_on": ["M2"],
+      "scope": [],
+      "acceptance": ["Acc 1", "Acc 2"]
+    },
+    {
+      "id": "M2",
+      "title": "Milestone 2",
+      "depends_on": ["M1"],
+      "scope": [],
+      "acceptance": ["Acc 1", "Acc 2"]
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "project": {
+    "name": "Invalid Transition Role",
+    "description": "Transition references undeclared role",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "roles": [
+    { "name": "super-admin", "description": "Admin", "is_super_admin": true }
+  ],
+  "models": [
+    {
+      "name": "Order",
+      "table": "orders",
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        { "name": "status", "type": "string" }
+      ],
+      "states": {
+        "field": "status",
+        "initial": "pending",
+        "final": ["completed"],
+        "transitions": [
+          { "from": "pending", "to": "completed", "roles": ["undeclared_vendor"] }
+        ]
+      }
+    }
+  ],
+  "policies": [],
+  "filament": { "panels": [] },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Setup",
+      "depends_on": [],
+      "scope": ["Order"],
+      "acceptance": ["Acc 1", "Acc 2"]
+    }
+  ]
+}

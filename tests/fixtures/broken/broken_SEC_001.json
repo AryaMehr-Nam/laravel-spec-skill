@@ -1,0 +1,36 @@
+{
+  "project": {
+    "name": "Unlogged PII Spec",
+    "description": "PII field without audit logging configured",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3",
+    "audit_log": false
+  },
+  "roles": [
+    { "name": "super-admin", "description": "Admin", "is_super_admin": true }
+  ],
+  "models": [
+    {
+      "name": "User",
+      "table": "users",
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        { "name": "national_id", "type": "string", "pii": true }
+      ]
+    }
+  ],
+  "policies": [],
+  "filament": { "panels": [] },
+  "integrations": [],
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Setup",
+      "depends_on": [],
+      "scope": ["User"],
+      "acceptance": ["Acc 1", "Acc 2"]
+    }
+  ]
+}

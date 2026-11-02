@@ -1,0 +1,44 @@
+{
+  "project": {
+    "name": "Unindexed Foreign Key",
+    "description": "Foreign key field without database index",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "roles": [
+    { "name": "super-admin", "description": "Admin", "is_super_admin": true }
+  ],
+  "models": [
+    {
+      "name": "User",
+      "table": "users",
+      "fields": [{ "name": "id", "type": "bigInteger" }]
+    },
+    {
+      "name": "Order",
+      "table": "orders",
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        {
+          "name": "user_id",
+          "type": "bigInteger",
+          "index": false,
+          "foreign": { "model": "User" }
+        }
+      ]
+    }
+  ],
+  "policies": [],
+  "filament": { "panels": [] },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Setup",
+      "depends_on": [],
+      "scope": ["User", "Order"],
+      "acceptance": ["Acc 1", "Acc 2"]
+    }
+  ]
+}

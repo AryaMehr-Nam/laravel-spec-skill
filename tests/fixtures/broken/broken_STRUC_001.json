@@ -1,0 +1,22 @@
+{
+  "project": {
+    "name": "Missing Roles Spec",
+    "description": "Missing required top-level roles section",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "models": [],
+  "policies": [],
+  "filament": { "panels": [] },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Setup",
+      "depends_on": [],
+      "scope": [],
+      "acceptance": ["Acc 1", "Acc 2"]
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "project": {
+    "name": "Duplicate Model Spec",
+    "description": "Duplicate model names",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "roles": [
+    { "name": "super-admin", "description": "Admin", "is_super_admin": true }
+  ],
+  "models": [
+    { "name": "User", "table": "users", "fields": [{ "name": "id", "type": "bigInteger" }] },
+    { "name": "User", "table": "users_copy", "fields": [{ "name": "id", "type": "bigInteger" }] }
+  ],
+  "policies": [],
+  "filament": { "panels": [] },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Setup",
+      "depends_on": [],
+      "scope": ["User"],
+      "acceptance": ["Acc 1", "Acc 2"]
+    }
+  ]
+}

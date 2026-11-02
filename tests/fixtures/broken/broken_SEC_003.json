@@ -1,0 +1,43 @@
+{
+  "project": {
+    "name": "Invalid Owner Field",
+    "description": "Policy ownership specifies field not on model",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "roles": [
+    { "name": "super-admin", "description": "Admin", "is_super_admin": true }
+  ],
+  "models": [
+    {
+      "name": "Article",
+      "table": "articles",
+      "fields": [{ "name": "id", "type": "bigInteger" }]
+    }
+  ],
+  "policies": [
+    {
+      "model": "Article",
+      "ownership": "owner_field:author_id",
+      "abilities": {
+        "viewAny": ["super-admin"],
+        "view": ["super-admin"],
+        "create": ["super-admin"],
+        "update": ["super-admin"],
+        "delete": ["super-admin"]
+      }
+    }
+  ],
+  "filament": { "panels": [] },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Setup",
+      "depends_on": [],
+      "scope": ["Article"],
+      "acceptance": ["Acc 1", "Acc 2"]
+    }
+  ]
+}

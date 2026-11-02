@@ -1,0 +1,40 @@
+{
+  "project": {
+    "name": "Missing Inverse Relation",
+    "description": "Inverse relation not defined on target model",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "roles": [
+    { "name": "super-admin", "description": "Admin", "is_super_admin": true }
+  ],
+  "models": [
+    {
+      "name": "User",
+      "table": "users",
+      "fields": [{ "name": "id", "type": "bigInteger" }],
+      "relations": [
+        { "name": "orders", "type": "hasMany", "model": "Order", "inverse": "customer" }
+      ]
+    },
+    {
+      "name": "Order",
+      "table": "orders",
+      "fields": [{ "name": "id", "type": "bigInteger" }],
+      "relations": []
+    }
+  ],
+  "policies": [],
+  "filament": { "panels": [] },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Setup",
+      "depends_on": [],
+      "scope": ["User", "Order"],
+      "acceptance": ["Acc 1", "Acc 2"]
+    }
+  ]
+}

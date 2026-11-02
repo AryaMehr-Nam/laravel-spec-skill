@@ -1,0 +1,26 @@
+{
+  "project": {
+    "name": "Duplicate Role Spec",
+    "description": "Duplicate role identifiers",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "roles": [
+    { "name": "super-admin", "description": "Admin 1", "is_super_admin": true },
+    { "name": "super-admin", "description": "Admin 2", "is_super_admin": true }
+  ],
+  "models": [],
+  "policies": [],
+  "filament": { "panels": [] },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Setup",
+      "depends_on": [],
+      "scope": [],
+      "acceptance": ["Acc 1", "Acc 2"]
+    }
+  ]
+}

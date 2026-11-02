@@ -1,0 +1,25 @@
+{
+  "project": {
+    "name": "No Super Admin Spec",
+    "description": "Missing super-admin role",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "roles": [
+    { "name": "editor", "description": "Content editor", "is_super_admin": false }
+  ],
+  "models": [],
+  "policies": [],
+  "filament": { "panels": [] },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Setup",
+      "depends_on": [],
+      "scope": [],
+      "acceptance": ["Acc 1", "Acc 2"]
+    }
+  ]
+}

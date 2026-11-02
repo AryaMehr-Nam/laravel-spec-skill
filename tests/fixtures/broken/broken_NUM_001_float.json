@@ -1,0 +1,34 @@
+{
+  "project": {
+    "name": "Float Currency Spec",
+    "description": "Prohibited floating point type for currency",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "roles": [
+    { "name": "super-admin", "description": "Admin", "is_super_admin": true }
+  ],
+  "models": [
+    {
+      "name": "Product",
+      "table": "products",
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        { "name": "unit_price", "type": "float" }
+      ]
+    }
+  ],
+  "policies": [],
+  "filament": { "panels": [] },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Setup",
+      "depends_on": [],
+      "scope": ["Product"],
+      "acceptance": ["Acc 1", "Acc 2"]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "project": {
+    "name": "Unscoped Model Spec",
+    "description": "Model never included in any milestone scope",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "roles": [
+    { "name": "super-admin", "description": "Admin", "is_super_admin": true }
+  ],
+  "models": [
+    { "name": "OrphanModel", "table": "orphan_models", "fields": [{ "name": "id", "type": "bigInteger" }] }
+  ],
+  "policies": [],
+  "filament": { "panels": [] },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Setup",
+      "depends_on": [],
+      "scope": ["OtherModel"],
+      "acceptance": ["Acc 1", "Acc 2"]
+    }
+  ]
+}
