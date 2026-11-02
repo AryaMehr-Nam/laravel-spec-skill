@@ -438,6 +438,74 @@ class TestEdgeCasesAndFileHandling:
         assert d["errors"][0]["severity"] == "error"
 
 
+class TestEnumValidation:
+    """Tests verifying ENUM_001 validation rules."""
+
+    def _base_spec(self, field_def: dict) -> dict:
+        return {
+            "project": {
+                "name": "Enum Test",
+                "description": "Testing enum fields",
+                "locale": "en",
+                "timezone": "UTC",
+                "laravel_version": "12",
+                "filament_version": "v3",
+            },
+            "roles": [{"name": "super-admin", "is_super_admin": True}],
+            "models": [
+                {
+                    "name": "Post",
+                    "table": "posts",
+                    "fields": [{"name": "id", "type": "bigInteger"}, field_def],
+                    "relations": [],
+                }
+            ],
+            "policies": [],
+            "filament": {"panels": []},
+            "milestones": [
+                {
+                    "id": "M0",
+                    "title": "Init",
+                    "depends_on": [],
+                    "scope": ["Post"],
+                    "acceptance": ["Post model created", "Enum status field supported"],
+                }
+            ],
+        }
+
+    def test_missing_enum_values_fails(self) -> None:
+        spec = self._base_spec({"name": "status", "type": "enum"})
+        res = validate_spec(spec)
+        assert res.is_valid is False
+        assert any(v.rule_id == "ENUM_001" for v in res.errors)
+
+    def test_empty_enum_values_fails(self) -> None:
+        spec = self._base_spec({"name": "status", "type": "enum", "enum_values": []})
+        res = validate_spec(spec)
+        assert res.is_valid is False
+        assert any(v.rule_id == "ENUM_001" for v in res.errors)
+
+    def test_non_string_enum_values_fails(self) -> None:
+        spec = self._base_spec({"name": "status", "type": "enum", "enum_values": [1, 2]})
+        res = validate_spec(spec)
+        assert res.is_valid is False
+        assert any(v.rule_id == "ENUM_001" for v in res.errors)
+
+    def test_blank_string_enum_values_fails(self) -> None:
+        spec = self._base_spec({"name": "status", "type": "enum", "enum_values": ["   "]})
+        res = validate_spec(spec)
+        assert res.is_valid is False
+        assert any(v.rule_id == "ENUM_001" for v in res.errors)
+
+    def test_valid_enum_values_passes(self) -> None:
+        spec = self._base_spec(
+            {"name": "status", "type": "enum", "enum_values": ["draft", "published"]}
+        )
+        res = validate_spec(spec)
+        assert res.is_valid is True
+        assert not any(v.rule_id == "ENUM_001" for v in res.violations)
+
+
 class TestCliInterface:
     """Tests verifying the command line interface via subprocess."""
 

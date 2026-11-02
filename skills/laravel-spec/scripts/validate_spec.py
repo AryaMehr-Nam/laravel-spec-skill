@@ -142,7 +142,10 @@ class SpecValidator:
         # Step 6: Numbers and financial precision
         self._validate_numbers_and_currency()
 
-        # Step 7: Milestone acyclic DAG
+        # Step 7: Enum fields
+        self._validate_enums()
+
+        # Step 8: Milestone acyclic DAG
         self._validate_milestones_dag()
 
         # Step 8: Security, PII, uploads, and ownership
@@ -913,6 +916,42 @@ class SpecValidator:
                                     f"non-negative and <= precision for '{field.get('name')}'."
                                 ),
                             )
+
+    # -------------------------------------------------------------------------
+    # Rule Pass 6b: Enum fields (ENUM_001)
+    # -------------------------------------------------------------------------
+    def _validate_enums(self) -> None:
+        """Validate that all enum fields define a non-empty list of valid string values."""
+        for midx, model in enumerate(self._as_list(self.spec.get("models"))):
+            if not isinstance(model, dict):
+                continue
+            mname = model.get("name", f"Model_{midx}")
+            for fidx, field in enumerate(self._as_list(model.get("fields"))):
+                if not isinstance(field, dict):
+                    continue
+                ftype = str(field.get("type", "")).lower()
+                if ftype == "enum":
+                    fname = field.get("name", f"field_{fidx}")
+                    enum_vals = field.get("enum_values")
+                    is_valid = (
+                        isinstance(enum_vals, list)
+                        and len(enum_vals) > 0
+                        and all(isinstance(v, str) and v.strip() for v in enum_vals)
+                    )
+                    if not is_valid:
+                        self._add_violation(
+                            rule_id="ENUM_001",
+                            severity=Severity.ERROR,
+                            message=(
+                                f"Enum field '{fname}' on model '{mname}' must define a "
+                                "non-empty 'enum_values' list with valid string values."
+                            ),
+                            path=f"models[{midx}].fields[{fidx}].enum_values",
+                            fix_hint=(
+                                f"Define 'enum_values' as a non-empty list of strings on "
+                                f"field '{fname}' (e.g. ['active', 'inactive', 'pending'])."
+                            ),
+                        )
 
     # -------------------------------------------------------------------------
     # Rule Pass 7: Milestone Acyclic DAG (DAG_001 .. DAG_004)
