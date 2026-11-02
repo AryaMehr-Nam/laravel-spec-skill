@@ -242,36 +242,40 @@ def test_cli_install_and_uninstall(temp_env: tuple[Path, Path]):
     proj_dir, home_dir = temp_env
 
     # CLI install --project --agent cursor --json
-    code = main([
-        "--project",
-        "--agent",
-        "cursor",
-        "--project-dir",
-        str(proj_dir),
-        "--home-dir",
-        str(home_dir),
-        "--source",
-        str(SOURCE_SKILL_DIR),
-        "--json",
-    ])
+    code = main(
+        [
+            "--project",
+            "--agent",
+            "cursor",
+            "--project-dir",
+            str(proj_dir),
+            "--home-dir",
+            str(home_dir),
+            "--source",
+            str(SOURCE_SKILL_DIR),
+            "--json",
+        ]
+    )
     assert code == 0
     assert (proj_dir / ".cursor" / "skills" / "laravel-spec" / "SKILL.md").is_file()
     assert (proj_dir / "AGENTS.md").is_file()
 
     # CLI uninstall --project --agent cursor --json
-    code_un = main([
-        "--project",
-        "--agent",
-        "cursor",
-        "--project-dir",
-        str(proj_dir),
-        "--home-dir",
-        str(home_dir),
-        "--source",
-        str(SOURCE_SKILL_DIR),
-        "--uninstall",
-        "--json",
-    ])
+    code_un = main(
+        [
+            "--project",
+            "--agent",
+            "cursor",
+            "--project-dir",
+            str(proj_dir),
+            "--home-dir",
+            str(home_dir),
+            "--source",
+            str(SOURCE_SKILL_DIR),
+            "--uninstall",
+            "--json",
+        ]
+    )
     assert code_un == 0
     assert not (proj_dir / ".cursor" / "skills" / "laravel-spec").exists()
     assert not (proj_dir / "AGENTS.md").exists()
@@ -354,12 +358,14 @@ def test_shared_skill_directory_partial_uninstall(temp_env: tuple[Path, Path]):
 def test_invalid_source_path_cli(temp_env: tuple[Path, Path]):
     """Verify CLI returns non-zero error when source path is invalid."""
     proj_dir, home_dir = temp_env
-    code = main([
-        "--source",
-        str(proj_dir / "nonexistent_source"),
-        "--project-dir",
-        str(proj_dir),
-    ])
+    code = main(
+        [
+            "--source",
+            str(proj_dir / "nonexistent_source"),
+            "--project-dir",
+            str(proj_dir),
+        ]
+    )
     assert code != 0
 
 
@@ -468,5 +474,3 @@ def test_forwarding_scripts_cli():
     )
     assert proc.returncode == 0
     assert "PASS:" in proc.stdout
-
-

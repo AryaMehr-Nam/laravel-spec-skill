@@ -72,7 +72,8 @@ class TestReleaseDocumentation:
         assert "ruff check ." in content
         assert "How to Add New Validation Rules" in content
         assert "Rule Identifier Conventions" in content
-        assert "ValidationIssue" in content
+        assert "RuleViolation" in content
+        assert "Severity" in content
         assert "How to Author New Presets" in content
         assert "Pull Request Checklist" in content
 
@@ -212,3 +213,37 @@ class TestReleaseDocumentation:
         )
         assert proc.returncode == 0, f"init_spec stderr: {proc.stderr}"
         assert init_out.is_file()
+
+        # 5. install.py with --target all
+        install_proj = tmp_path / "install_proj"
+        install_home = tmp_path / "install_home"
+        install_proj.mkdir()
+        install_home.mkdir()
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT_DIR / "scripts" / "install.py"),
+                "--target",
+                "all",
+                "--project-dir",
+                str(install_proj),
+                "--home-dir",
+                str(install_home),
+                "--json",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert proc.returncode == 0, f"install.py stderr: {proc.stderr}"
+        assert (install_proj / "CLAUDE.md").is_file()
+        assert (install_proj / "GEMINI.md").is_file()
+        assert (install_proj / "AGENTS.md").is_file()
+
+    def test_demo_tape_exists_and_is_valid_vhs_script(self) -> None:
+        tape_file = ROOT_DIR / "demo.tape"
+        assert tape_file.is_file(), "demo.tape must exist in repository root"
+        content = tape_file.read_text(encoding="utf-8")
+        assert "Output demo.gif" in content
+        assert "python scripts/validate_spec.py" in content
+        assert "render_docs.py" in content
+        assert "render_commands.py" in content

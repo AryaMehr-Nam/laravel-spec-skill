@@ -177,9 +177,7 @@ def _cleanup_empty_parents(parent: Path) -> None:
             break
 
 
-def install_skill_directory(
-    source_dir: Path, target_dir: Path, agent_id: str, mode: str
-) -> None:
+def install_skill_directory(source_dir: Path, target_dir: Path, agent_id: str, mode: str) -> None:
     """Copy skill directory tree to target destination with manifest and backup protection."""
     manifest_file = target_dir / MANIFEST_FILENAME
     existing_agents: list[str] = []
@@ -396,6 +394,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--agent",
+        "--target",
+        dest="agent",
         choices=["claude", "cursor", "codex", "antigravity", "all"],
         default="all",
         help="Target agent environment (default: all).",

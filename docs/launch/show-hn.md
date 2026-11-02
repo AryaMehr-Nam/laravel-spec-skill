@@ -56,7 +56,7 @@ cd laravel-spec-skill
 # Run the 29-rule validator on the included multi-vendor marketplace example:
 python scripts/validate_spec.py examples/marketplace/spec.json --strict
 
-# Run the test suite (150 tests, standard pytest):
+# Run the test suite (158 tests, standard pytest):
 pytest
 ```
 

@@ -77,13 +77,13 @@ Rule IDs follow the pattern `<CATEGORY>_<3-DIGIT-NUMBER>`:
 When adding a new category, use a 3-4 letter uppercase prefix.
 
 ### 2. Implement the Rule in `validate_spec.py`
-Add your check within `SpecValidator.validate()` or a dedicated helper method. Every rule violation emits a `ValidationIssue`:
+Add your check within `SpecValidator.validate()` or a dedicated helper method. Every rule violation emits a `RuleViolation`:
 
 ```python
-self.issues.append(
-    ValidationIssue(
+self.violations.append(
+    RuleViolation(
         rule_id="SEC_005",
-        severity=ValidationSeverity.ERROR,  # or ValidationSeverity.WARNING
+        severity=Severity.ERROR,  # or Severity.WARNING
         message="Model 'Order' declares soft deletes but lacks deleted_at column definition",
         path="models.Order",
         fix_hint="Add a nullable timestamp field 'deleted_at' or remove soft delete declaration.",
@@ -98,17 +98,16 @@ Update [`skills/laravel-spec/references/validation-rules.md`](skills/laravel-spe
 
 ### 4. Add Automated Regression Tests
 Every rule **must** have a corresponding test:
-1. Create a minimal broken fixture triggering the rule in `tests/test_validator.py` or as a fixture dictionary.
-2. Assert that the validator returns an issue with the exact `rule_id`.
-3. Assert that the fix hint and path are informative.
+1. **Fixture-based (Recommended)**: Create a minimal JSON file in `tests/fixtures/broken/broken_<RULE_ID>.json`. The parameterized test in `tests/test_validator.py` (`test_broken_fixture_triggers_expected_rule`) will automatically discover and verify it!
+2. **Direct Python API**: You can also add explicit unit tests using `SpecValidator` or `validate_spec`:
 
 ```python
 def test_rule_sec_005_soft_delete_missing_field():
     spec = create_valid_spec_baseline()
     spec["models"][0]["soft_deletes"] = True
     # remove deleted_at if present
-    issues = SpecValidator(spec).validate()
-    assert any(i.rule_id == "SEC_005" for i in issues)
+    result = SpecValidator(spec).validate()
+    assert any(v.rule_id == "SEC_005" for v in result.violations)
 ```
 
 ---
@@ -143,7 +142,7 @@ List automated test scenarios (Pest/PHPUnit) required to verify the integration.
 ```
 
 ### 2. Update Documentation & Schemas
-- Add the preset name to `schemas/spec.schema.json` under `project.presets.items.enum` (if schema validation is enforced).
+- Add the preset name to `skills/laravel-spec/schemas/spec.schema.json` under `project.presets.items.enum` (if schema validation is enforced).
 - Update the Presets table in `README.md` and `skills/laravel-spec/SKILL.md`.
 - Add test coverage in `tests/test_examples.py` ensuring the preset reference file exists and meets documentation standards.
 

@@ -35,24 +35,27 @@ Watch an AI agent discover requirements, compile `spec/spec.json`, validate 29 a
         Ready to proceed to Phase 5 TDD build? [Y/n]
 ```
 
-### Reproduce / Record this Demo (Terminal Script)
+### Reproduce / Record this Demo (Terminal Script & VHS)
 
-You can record the exact terminal demo using [VHS](https://github.com/charmbracelet/vhs) or run it locally in 10 seconds:
+You can record the exact terminal demo into `demo.gif` using [VHS](https://github.com/charmbracelet/vhs) (`vhs demo.tape`) or run the commands locally in 10 seconds:
 
 ```bash
 # 1. Clone and navigate to repo
 git clone https://github.com/example/laravel-spec-skill.git
 cd laravel-spec-skill
 
-# 2. Inspect and validate one of the production examples
+# 2. Inspect and validate one of the production examples (29 rules)
 python scripts/validate_spec.py examples/marketplace/spec.json --strict
 
 # 3. Deterministically render the 10 modular docs and Artisan commands
-python scripts/render_docs.py examples/marketplace/spec.json --output-dir /tmp/demo-docs
-python scripts/render_commands.py examples/marketplace/spec.json --output /tmp/demo-commands.sh
+python scripts/render_docs.py examples/marketplace/spec.json --output-dir demo-output/docs
+python scripts/render_commands.py examples/marketplace/spec.json --output demo-output/commands.sh
 
 # 4. View the generated dry-run command sequence
-head -n 25 /tmp/demo-commands.sh
+head -n 25 demo-output/commands.sh
+
+# 5. (Optional) Record reproducible demo.gif using bundled VHS tape script
+vhs demo.tape
 ```
 
 ---

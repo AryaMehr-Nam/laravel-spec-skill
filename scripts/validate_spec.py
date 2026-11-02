@@ -6,9 +6,7 @@ import runpy
 import sys
 from pathlib import Path
 
-_SKILL_SCRIPTS_DIR = (
-    Path(__file__).resolve().parent.parent / "skills" / "laravel-spec" / "scripts"
-)
+_SKILL_SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "skills" / "laravel-spec" / "scripts"
 if str(_SKILL_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SKILL_SCRIPTS_DIR))
 

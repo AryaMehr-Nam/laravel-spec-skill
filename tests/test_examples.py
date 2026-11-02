@@ -132,9 +132,7 @@ class TestExamplesRenderedArtifacts:
         assert "PASS: Specification is valid and adheres to all architecture rules." in disk_content
 
     @pytest.mark.parametrize("example_dir", [MARKETPLACE_DIR, CRM_DIR])
-    def test_render_docs_cli_matches_directory(
-        self, example_dir: Path, tmp_path: Path
-    ) -> None:
+    def test_render_docs_cli_matches_directory(self, example_dir: Path, tmp_path: Path) -> None:
         spec_file = example_dir / "spec.json"
         out_dir = tmp_path / f"docs_{example_dir.name}"
         cmd = [
@@ -154,9 +152,7 @@ class TestExamplesRenderedArtifacts:
             assert gen_file.read_text(encoding="utf-8") == exp_file.read_text(encoding="utf-8")
 
     @pytest.mark.parametrize("example_dir", [MARKETPLACE_DIR, CRM_DIR])
-    def test_render_commands_cli_formats(
-        self, example_dir: Path, tmp_path: Path
-    ) -> None:
+    def test_render_commands_cli_formats(self, example_dir: Path, tmp_path: Path) -> None:
         spec_file = example_dir / "spec.json"
         shell_out = tmp_path / f"cmd_{example_dir.name}.sh"
 
@@ -262,9 +258,7 @@ class TestPresetsArchitecture:
             )
 
     @pytest.mark.parametrize("filename,_", EXPECTED_PRESETS)
-    def test_preset_json_code_blocks_are_valid_json(
-        self, filename: str, _: list[str]
-    ) -> None:
+    def test_preset_json_code_blocks_are_valid_json(self, filename: str, _: list[str]) -> None:
         import re
 
         preset_file = PRESETS_DIR / filename

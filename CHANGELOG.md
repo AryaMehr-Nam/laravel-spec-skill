@@ -45,3 +45,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - GitHub issue templates `.github/ISSUE_TEMPLATE/bug_report.md` and `.github/ISSUE_TEMPLATE/preset_request.md`.
   - Launch announcement drafts in `docs/launch/`: `reddit-claudeai.md`, `reddit-laravel.md`, and `show-hn.md`.
   - Formal release tag `v0.1.0`.
+
+[Unreleased]: https://github.com/example/laravel-spec-skill/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/example/laravel-spec-skill/releases/tag/v0.1.0
