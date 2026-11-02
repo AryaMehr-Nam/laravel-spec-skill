@@ -25,3 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `examples/marketplace/`: Valid multi-vendor e-commerce marketplace (`spec.json`, 10 rendered markdown docs, `commands.sh`, `validation.txt`).
     - `examples/crm/`: Valid enterprise CRM (`spec.json`, 10 rendered markdown docs, `commands.sh`, `validation.txt`).
   - `tests/test_examples.py`: Comprehensive test suite verifying strict validation, deterministic doc and command generation, and preset documentation completeness.
+- **Milestone 4**: Canonical Agent Skill and deep architectural reference guides:
+  - `skills/laravel-spec/SKILL.md`: Vendor-neutral specification skill (241 lines, strictly under 500 lines) detailing the 5 operational phases (Discovery with batched questionnaire <= 7 questions & workspace inference, Spec generation, Machine validation loop, Review gate <= 15 lines, and Resumable TDD build protocol).
+  - Deep reference guides in `skills/laravel-spec/references/`:
+    - `spec-format.md`: Complete JSON specification schema documentation and field reference.
+    - `validation-rules.md`: Complete catalog of all 29 validation rules (`STRUC`, `UNIQ`, `REL`, `AUTH`, `SM`, `NUM`, `ENUM`, `DAG`, `SEC`) with severities, trigger conditions, examples, and fix hints.
+    - `filament-notes.md`: Filament v3/v4 panel providers, resources, form/table schemas, relation managers, policies, and ownership query scoping.
+    - `build-protocol.md`: Step-by-step TDD build protocol, milestone lifecycle, Red-Green-Refactor, Pint/Larastan QA, and `spec/PROGRESS.md` checkpoint format.
+- **Milestone 5**: Multi-agent installer and packaging test suite:
+  - `scripts/install.py`: Standalone, zero-dependency CLI installer supporting Claude Code, Cursor, OpenAI Codex CLI, and Antigravity across project-local and user-global targets with non-destructive pointer block injection (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`) and clean rollback via `--uninstall`.
+  - `tests/test_installer.py`: 21 automated tests verifying multi-agent targets, idempotent re-installation, non-destructive pointer block injection and clean removal, pre-existing directory backup and restore, and CLI subprocess execution.
+
