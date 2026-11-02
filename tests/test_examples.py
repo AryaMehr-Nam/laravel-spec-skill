@@ -72,6 +72,24 @@ class TestExamplesValidation:
         assert proc.returncode == 0
         assert "PASS: Specification is valid and adheres to all architecture rules." in proc.stdout
 
+    @pytest.mark.parametrize("example_dir", [MARKETPLACE_DIR, CRM_DIR])
+    def test_validator_cli_json_mode_on_examples(self, example_dir: Path) -> None:
+        spec_file = example_dir / "spec.json"
+        cmd = [
+            sys.executable,
+            str(SCRIPTS_DIR / "validate_spec.py"),
+            str(spec_file),
+            "--strict",
+            "--json",
+        ]
+        proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        assert proc.returncode == 0
+        payload = json.loads(proc.stdout)
+        assert payload.get("valid") is True
+        assert payload.get("error_count") == 0
+        assert payload.get("warning_count") == 0
+        assert payload.get("strict") is True
+
 
 class TestExamplesRenderedArtifacts:
     """Tests verifying pre-rendered docs and commands match deterministic output."""
@@ -113,18 +131,117 @@ class TestExamplesRenderedArtifacts:
         assert disk_content == expected_report
         assert "PASS: Specification is valid and adheres to all architecture rules." in disk_content
 
+    @pytest.mark.parametrize("example_dir", [MARKETPLACE_DIR, CRM_DIR])
+    def test_render_docs_cli_matches_directory(
+        self, example_dir: Path, tmp_path: Path
+    ) -> None:
+        spec_file = example_dir / "spec.json"
+        out_dir = tmp_path / f"docs_{example_dir.name}"
+        cmd = [
+            sys.executable,
+            str(SCRIPTS_DIR / "render_docs.py"),
+            str(spec_file),
+            "-o",
+            str(out_dir),
+        ]
+        proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        assert proc.returncode == 0
+
+        for fname in DOC_FILENAMES:
+            gen_file = out_dir / fname
+            exp_file = example_dir / fname
+            assert gen_file.is_file()
+            assert gen_file.read_text(encoding="utf-8") == exp_file.read_text(encoding="utf-8")
+
+    @pytest.mark.parametrize("example_dir", [MARKETPLACE_DIR, CRM_DIR])
+    def test_render_commands_cli_formats(
+        self, example_dir: Path, tmp_path: Path
+    ) -> None:
+        spec_file = example_dir / "spec.json"
+        shell_out = tmp_path / f"cmd_{example_dir.name}.sh"
+
+        cmd_shell = [
+            sys.executable,
+            str(SCRIPTS_DIR / "render_commands.py"),
+            str(spec_file),
+            "-f",
+            "shell",
+            "-o",
+            str(shell_out),
+        ]
+        proc_shell = subprocess.run(cmd_shell, capture_output=True, text=True, check=False)
+        assert proc_shell.returncode == 0
+        expected_shell = (example_dir / "commands.sh").read_text(encoding="utf-8")
+        assert shell_out.read_text(encoding="utf-8") == expected_shell
+
+        cmd_json = [
+            sys.executable,
+            str(SCRIPTS_DIR / "render_commands.py"),
+            str(spec_file),
+            "-f",
+            "json",
+        ]
+        proc_json = subprocess.run(cmd_json, capture_output=True, text=True, check=False)
+        assert proc_json.returncode == 0
+        parsed_cmds = json.loads(proc_json.stdout)
+        assert isinstance(parsed_cmds, list)
+        assert len(parsed_cmds) > 0
+        assert any("make:model" in c for c in parsed_cmds)
+        assert any("make:policy" in c for c in parsed_cmds)
+        assert any("make:filament-resource" in c for c in parsed_cmds)
+
 
 class TestPresetsArchitecture:
     """Tests validating presence and structure of presets reference guides."""
 
     EXPECTED_PRESETS = [
-        ("rtl-fa.md", ["rtl-fa", "Vazirmatn", "morilog/jalali", "Jalali"]),
+        (
+            "rtl-fa.md",
+            [
+                "rtl-fa",
+                "Vazirmatn",
+                "morilog/jalali",
+                "Jalali",
+                "zero external cdn",
+                "Persian",
+                "toLatin",
+            ],
+        ),
         (
             "iran-payments.md",
-            ["iran-payments", "Zarinpal", "Saman", "idempotency_key", "lockForUpdate"],
+            [
+                "iran-payments",
+                "Zarinpal",
+                "Shepa",
+                "Saman",
+                "idempotency_key",
+                "lockForUpdate",
+                "Rial",
+                "Toman",
+            ],
         ),
-        ("otp-login.md", ["otp-login", "120", "nonce", "rate limit", "enumeration"]),
-        ("multi-tenant.md", ["multi-tenant", "tenant_id", "Filament", "stancl/tenancy"]),
+        (
+            "otp-login.md",
+            [
+                "otp-login",
+                "120",
+                "nonce",
+                "rate limit",
+                "enumeration",
+                "hash_equals",
+            ],
+        ),
+        (
+            "multi-tenant.md",
+            [
+                "multi-tenant",
+                "tenant_id",
+                "Filament",
+                "stancl/tenancy",
+                "BelongsToTenant",
+                "scopedToTenant",
+            ],
+        ),
     ]
 
     def test_presets_directory_exists(self) -> None:
@@ -142,4 +259,75 @@ class TestPresetsArchitecture:
         for kw in keywords:
             assert kw.lower() in content.lower(), (
                 f"Preset {filename} missing expected keyword '{kw}'"
+            )
+
+    @pytest.mark.parametrize("filename,_", EXPECTED_PRESETS)
+    def test_preset_json_code_blocks_are_valid_json(
+        self, filename: str, _: list[str]
+    ) -> None:
+        import re
+
+        preset_file = PRESETS_DIR / filename
+        content = preset_file.read_text(encoding="utf-8")
+        json_blocks = re.findall(r"```json\s*(.*?)\s*```", content, re.DOTALL)
+        assert len(json_blocks) >= 1, f"Expected at least 1 json code block in {filename}"
+
+        for i, block in enumerate(json_blocks):
+            try:
+                parsed = json.loads(block)
+                assert isinstance(parsed, dict)
+            except Exception as err:
+                pytest.fail(f"Invalid JSON in block {i} of {filename}: {err}")
+
+
+class TestExamplesDomainInvariants:
+    """Tests verifying domain-specific architecture invariants across example specs."""
+
+    def test_marketplace_payment_invariants(self) -> None:
+        spec = load_example_spec(MARKETPLACE_DIR)
+        models = {m["name"]: m for m in spec.get("models", [])}
+        assert "Payment" in models
+        payment_fields = {f["name"]: f for f in models["Payment"]["fields"]}
+
+        # Idempotency and audit integrity
+        assert "idempotency_key" in payment_fields
+        assert payment_fields["idempotency_key"].get("unique") is True
+        assert "authority" in payment_fields
+        assert "tracking_code" in payment_fields
+        assert "card_pan_masked" in payment_fields
+        assert "verified_at" in payment_fields
+        assert "failure_reason" in payment_fields
+
+        # Precision rule: decimal amount with explicit scale
+        assert payment_fields["amount"]["type"] == "decimal"
+        assert "precision" in payment_fields["amount"]
+        assert "scale" in payment_fields["amount"]
+
+    def test_crm_deal_and_activity_workflows(self) -> None:
+        spec = load_example_spec(CRM_DIR)
+        models = {m["name"]: m for m in spec.get("models", [])}
+
+        assert "Deal" in models
+        deal_states = models["Deal"].get("states")
+        assert deal_states is not None
+        assert deal_states["initial"] == "lead"
+        assert set(deal_states["final"]) == {"closed_won", "closed_lost"}
+
+        assert "Activity" in models
+        act_states = models["Activity"].get("states")
+        assert act_states is not None
+        assert act_states["initial"] == "scheduled"
+        assert set(act_states["final"]) == {"completed", "cancelled"}
+
+    def test_both_examples_have_complete_milestone_coverage(self) -> None:
+        for example_dir in [MARKETPLACE_DIR, CRM_DIR]:
+            spec = load_example_spec(example_dir)
+            all_model_names = {m["name"] for m in spec.get("models", [])}
+            covered_models: set[str] = set()
+            for ms in spec.get("milestones", []):
+                covered_models.update(ms.get("scope", []))
+
+            uncovered = all_model_names - covered_models
+            assert not uncovered, (
+                f"{example_dir.name} models not covered in milestones: {uncovered}"
             )

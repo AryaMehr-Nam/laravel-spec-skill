@@ -190,6 +190,8 @@ Incorporate `iran-payments` into `spec/spec.json`:
         { "name": "ref_id", "type": "string", "nullable": true },
         { "name": "tracking_code", "type": "string", "nullable": true },
         { "name": "card_pan_masked", "type": "string", "nullable": true },
+        { "name": "verified_at", "type": "datetime", "nullable": true },
+        { "name": "failure_reason", "type": "string", "nullable": true },
         { "name": "idempotency_key", "type": "string", "unique": true },
         { "name": "status", "type": "string" }
       ],
@@ -199,6 +201,7 @@ Incorporate `iran-payments` into `spec/spec.json`:
         "final": ["reversed", "failed"],
         "transitions": [
           { "from": "initiated", "to": "redirected", "roles": ["customer", "super-admin"] },
+          { "from": "initiated", "to": "failed", "roles": ["customer", "super-admin"] },
           { "from": "redirected", "to": "verified", "roles": ["*"] },
           { "from": "redirected", "to": "failed", "roles": ["*"] },
           { "from": "verified", "to": "reversed", "roles": ["super-admin"] }
@@ -211,6 +214,11 @@ Incorporate `iran-payments` into `spec/spec.json`:
       "name": "zarinpal",
       "kind": "payments",
       "config_notes": "ZARINPAL_MERCHANT_ID, ZARINPAL_SANDBOX=false, ZARINPAL_CURRENCY=IRT"
+    },
+    {
+      "name": "shepa",
+      "kind": "payments",
+      "config_notes": "SHEPA_API_KEY, SHEPA_SANDBOX=false"
     },
     {
       "name": "saman",

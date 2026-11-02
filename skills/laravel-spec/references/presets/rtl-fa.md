@@ -56,11 +56,13 @@ class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
+        // NOTE: Do NOT call ->font('Vazirmatn UI') without a local provider, as Filament
+        // defaults to querying Google Fonts CDN for unconfigured fonts.
+        // The self-hosted Vazirmatn font is loaded exclusively via Vite theme.css below.
         return $panel
             ->default()
             ->id('admin')
             ->path('admin')
-            ->font('Vazirmatn UI')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->colors([
                 'primary' => Color::Amber,
@@ -92,11 +94,11 @@ use Morilog\Jalali\Jalalian;
 class Order extends Model
 {
     /**
-     * Get Jalali representation of order creation time.
+     * Get Jalali representation of order creation time safely handling null dates.
      */
-    public function getCreatedAtShamsiAttribute(): string
+    public function getCreatedAtShamsiAttribute(): ?string
     {
-        return Jalalian::fromDateTime($this->created_at)->format('Y/m/d H:i');
+        return $this->created_at ? Jalalian::fromDateTime($this->created_at)->format('Y/m/d H:i') : null;
     }
 }
 ```
@@ -144,19 +146,19 @@ class PersianNumber
     /**
      * Normalize Persian and Eastern-Arabic digits to standard Latin digits for storage/querying.
      */
-    public static function toLatin(string|null $value): string
+    public static function toLatin(string|int|float|null $value): string
     {
         if ($value === null) {
             return '';
         }
-        $str = str_replace(static::$eastern, static::$latin, $value);
+        $str = str_replace(static::$eastern, static::$latin, (string) $value);
         return str_replace(static::$arabic, static::$latin, $str);
     }
 }
 ```
 
 ### 4.2 Global Request Normalization Middleware
-Normalize all incoming request payloads (phones, prices, National IDs) to Latin digits before running validation rules:
+Normalize all incoming request payloads (phones, prices, National IDs) to Latin digits before running validation rules, protecting sensitive password fields from character mutation:
 
 ```php
 namespace App\Http\Middleware;
@@ -167,11 +169,20 @@ use Illuminate\Http\Request;
 
 class NormalizePersianNumbers
 {
+    /**
+     * Input fields excluded from numeral normalization.
+     */
+    protected array $except = [
+        'password',
+        'password_confirmation',
+        'current_password',
+    ];
+
     public function handle(Request $request, Closure $next)
     {
         $input = $request->all();
-        array_walk_recursive($input, function (&$item) {
-            if (is_string($item)) {
+        array_walk_recursive($input, function (&$item, $key) {
+            if (is_string($item) && ! in_array($key, $this->except, true)) {
                 $item = PersianNumber::toLatin($item);
             }
         });

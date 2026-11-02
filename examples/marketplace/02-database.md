@@ -156,6 +156,10 @@ This document details the database schema, column types, and relationships.
 | `amount` | `decimal` | No | - | Decimal(12, 2) |
 | `authority` | `string` | No | INDEX | - |
 | `ref_id` | `string` | Yes | - | - |
+| `tracking_code` | `string` | Yes | - | - |
+| `card_pan_masked` | `string` | Yes | - | - |
+| `verified_at` | `datetime` | Yes | - | - |
+| `failure_reason` | `string` | Yes | - | - |
 | `idempotency_key` | `string` | No | UNIQUE, INDEX | - |
 | `status` | `string` | No | - | - |
 

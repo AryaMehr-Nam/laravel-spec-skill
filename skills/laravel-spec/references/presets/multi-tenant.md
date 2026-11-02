@@ -96,7 +96,7 @@ With `->tenant(Tenant::class, slugAttribute: 'slug')`:
 1. **Route Model Binding Guard**:
    Even with global scopes active, always ensure explicit model-to-tenant verification when resolving route parameters in API controllers or Livewire actions:
    ```php
-   abort_unless($order->tenant_id === Filament::getTenant()->id, 403);
+   abort_unless($order->tenant_id === Filament::getTenant()?->id, 403);
    ```
 2. **Background Jobs & Queues**:
    Queued jobs execute outside the HTTP request lifecycle. When dispatching tenant-aware jobs, always pass the tenant ID or implement `TenantAwareJob`:

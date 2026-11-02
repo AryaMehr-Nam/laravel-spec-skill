@@ -6,8 +6,8 @@ This document defines lifecycle states, valid state transitions, and role permis
 
 | Model | State Column | Initial State | Final / Terminal States | Transitions |
 | :--- | :--- | :--- | :--- | :--- |
-| **Order** | `status` | `pending` | `delivered`, `cancelled` | 6 |
-| **Payment** | `status` | `initiated` | `refunded`, `failed` | 4 |
+| **Order** | `status` | `pending` | `delivered`, `cancelled` | 7 |
+| **Payment** | `status` | `initiated` | `refunded`, `failed` | 5 |
 
 ## Transition Rules by Model
 
@@ -23,6 +23,7 @@ This document defines lifecycle states, valid state transitions, and role permis
 | `processing` | `shipped` | `vendor`, `super-admin` |
 | `shipped` | `delivered` | `vendor`, `customer`, `super-admin` |
 | `paid` | `cancelled` | `super-admin` |
+| `processing` | `cancelled` | `super-admin` |
 
 ### `Payment` Workflow (`status`)
 - **Initial State**: `initiated`
@@ -31,6 +32,7 @@ This document defines lifecycle states, valid state transitions, and role permis
 | Current State (From) | Next State (To) | Authorized Roles |
 | :--- | :--- | :--- |
 | `initiated` | `redirected` | `customer`, `super-admin` |
+| `initiated` | `failed` | `customer`, `super-admin` |
 | `redirected` | `verified` | `*` |
 | `redirected` | `failed` | `*` |
 | `verified` | `refunded` | `super-admin` |

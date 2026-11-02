@@ -91,6 +91,7 @@ Implement `app/Services/OtpService.php`:
 ```php
 namespace App\Services;
 
+use App\Contracts\SmsGatewayContract;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;

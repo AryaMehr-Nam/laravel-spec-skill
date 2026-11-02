@@ -12,7 +12,7 @@ This document details the functional domains and entity boundaries.
 | **Product** | `products` | 9 | 4 | No |
 | **Order** | `orders` | 7 | 3 | Yes |
 | **OrderItem** | `order_items` | 6 | 2 | No |
-| **Payment** | `payments` | 9 | 2 | Yes |
+| **Payment** | `payments` | 13 | 2 | Yes |
 | **Review** | `reviews` | 5 | 2 | No |
 
 ## Module Structure

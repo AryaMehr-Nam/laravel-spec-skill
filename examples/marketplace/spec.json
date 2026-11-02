@@ -169,7 +169,8 @@
           { "from": "paid", "to": "processing", "roles": ["vendor", "super-admin"] },
           { "from": "processing", "to": "shipped", "roles": ["vendor", "super-admin"] },
           { "from": "shipped", "to": "delivered", "roles": ["vendor", "customer", "super-admin"] },
-          { "from": "paid", "to": "cancelled", "roles": ["super-admin"] }
+          { "from": "paid", "to": "cancelled", "roles": ["super-admin"] },
+          { "from": "processing", "to": "cancelled", "roles": ["super-admin"] }
         ]
       },
       "relations": [
@@ -227,6 +228,10 @@
         { "name": "amount", "type": "decimal", "precision": 12, "scale": 2 },
         { "name": "authority", "type": "string", "index": true },
         { "name": "ref_id", "type": "string", "nullable": true },
+        { "name": "tracking_code", "type": "string", "nullable": true },
+        { "name": "card_pan_masked", "type": "string", "nullable": true },
+        { "name": "verified_at", "type": "datetime", "nullable": true },
+        { "name": "failure_reason", "type": "string", "nullable": true },
         { "name": "idempotency_key", "type": "string", "unique": true, "index": true },
         { "name": "status", "type": "string" }
       ],
@@ -236,6 +241,7 @@
         "final": ["refunded", "failed"],
         "transitions": [
           { "from": "initiated", "to": "redirected", "roles": ["customer", "super-admin"] },
+          { "from": "initiated", "to": "failed", "roles": ["customer", "super-admin"] },
           { "from": "redirected", "to": "verified", "roles": ["*"] },
           { "from": "redirected", "to": "failed", "roles": ["*"] },
           { "from": "verified", "to": "refunded", "roles": ["super-admin"] }
