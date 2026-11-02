@@ -362,3 +362,111 @@ def test_invalid_source_path_cli(temp_env: tuple[Path, Path]):
     ])
     assert code != 0
 
+
+def test_corrupted_manifest_refuses_uninstall(temp_env: tuple[Path, Path]):
+    """Verify that a corrupted or non-spec manifest is protected against deletion on uninstall."""
+    proj_dir, home_dir = temp_env
+    claude_skill = proj_dir / ".claude" / "skills" / "laravel-spec"
+    claude_skill.mkdir(parents=True)
+    manifest_file = claude_skill / MANIFEST_FILENAME
+    manifest_file.write_text("{invalid json corrupt!", encoding="utf-8")
+    user_file = claude_skill / "my_precious_notes.txt"
+    user_file.write_text("Do not lose this content", encoding="utf-8")
+
+    installer = Installer(project_dir=proj_dir, home_dir=home_dir, source_dir=SOURCE_SKILL_DIR)
+    res = installer.uninstall(agents=["claude"], mode="project")
+
+    # Directory and files must remain untouched
+    assert claude_skill.is_dir()
+    assert user_file.is_file()
+    assert user_file.read_text(encoding="utf-8") == "Do not lose this content"
+    assert res["removed_skills"] == []
+
+
+def test_corrupted_manifest_backed_up_on_install(temp_env: tuple[Path, Path]):
+    """Verify pre-existing directory with invalid manifest is backed up before install."""
+    proj_dir, home_dir = temp_env
+    claude_skill = proj_dir / ".claude" / "skills" / "laravel-spec"
+    claude_skill.mkdir(parents=True)
+    (claude_skill / MANIFEST_FILENAME).write_text("not json", encoding="utf-8")
+    user_file = claude_skill / "pre_existing.txt"
+    user_file.write_text("pre-existing unmanaged data", encoding="utf-8")
+
+    installer = Installer(project_dir=proj_dir, home_dir=home_dir, source_dir=SOURCE_SKILL_DIR)
+    installer.install(agents=["claude"], mode="project")
+
+    # Backup was created
+    bak_dir = claude_skill.with_name(claude_skill.name + ".bak.laravel-spec")
+    assert bak_dir.is_dir()
+    assert (bak_dir / "pre_existing.txt").is_file()
+
+    # Installed skill is active
+    assert (claude_skill / "SKILL.md").is_file()
+
+    # Uninstall restores the backup
+    installer.uninstall(agents=["claude"], mode="project")
+    assert claude_skill.is_dir()
+    restored_file = claude_skill / "pre_existing.txt"
+    assert restored_file.is_file()
+    assert restored_file.read_text(encoding="utf-8") == "pre-existing unmanaged data"
+
+
+def test_pointer_block_in_middle_preserves_section_separation(tmp_path: Path):
+    """Test pointer block removal when placed between sections preserves blank line separation."""
+    pointer_file = tmp_path / "CLAUDE.md"
+    middle_content = (
+        f"# Section A\n\nNotes for section A.\n\n{POINTER_START}\n"
+        f"### Laravel Spec Skill\nSome skill notes\n{POINTER_END}\n\n"
+        f"# Section B\n\nNotes for section B.\n"
+    )
+    pointer_file.write_text(middle_content, encoding="utf-8")
+
+    remove_pointer_block(pointer_file)
+    cleaned = pointer_file.read_text(encoding="utf-8")
+    assert POINTER_START not in cleaned
+    assert "# Section A\n\nNotes for section A.\n\n# Section B" in cleaned
+
+
+def test_same_source_and_target_directory(tmp_path: Path):
+    """Verify installing when source_dir equals target_dir updates manifest safely."""
+    from scripts.install import install_skill_directory
+
+    temp_skill = tmp_path / "skill"
+    temp_skill.mkdir()
+    (temp_skill / "SKILL.md").write_text("# Skill", encoding="utf-8")
+
+    # Install targeting itself
+    install_skill_directory(temp_skill, temp_skill, "claude", "project")
+    assert (temp_skill / MANIFEST_FILENAME).is_file()
+
+
+def test_case_insensitive_agent_ids(temp_env: tuple[Path, Path]):
+    """Verify installer handles uppercase/mixed-case agent IDs properly."""
+    proj_dir, home_dir = temp_env
+    installer = Installer(project_dir=proj_dir, home_dir=home_dir, source_dir=SOURCE_SKILL_DIR)
+
+    res_in = installer.install(agents=["CLAUDE", "Cursor"], mode="project")
+    assert len(res_in["installed_skills"]) == 2
+    assert (proj_dir / ".claude" / "skills" / "laravel-spec" / "SKILL.md").is_file()
+    assert (proj_dir / ".cursor" / "skills" / "laravel-spec" / "SKILL.md").is_file()
+
+    res_un = installer.uninstall(agents=["claude", "CURSOR"], mode="project")
+    assert len(res_un["removed_skills"]) == 2
+    assert not (proj_dir / ".claude" / "skills" / "laravel-spec").exists()
+    assert not (proj_dir / ".cursor" / "skills" / "laravel-spec").exists()
+
+
+def test_forwarding_scripts_cli():
+    """Verify root scripts/ forwarding entrypoints execute properly."""
+    validate_script = REPO_ROOT / "scripts" / "validate_spec.py"
+    crm_spec = REPO_ROOT / "examples" / "crm" / "spec.json"
+
+    proc = subprocess.run(
+        [sys.executable, str(validate_script), str(crm_spec), "--strict"],
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0
+    assert "PASS:" in proc.stdout
+
+

@@ -91,10 +91,12 @@ Execute the bundled Python scripts to render markdown documentation and artisan 
 
 ```bash
 # Render the 10 modular documentation files into spec/
-python skills/laravel-spec/scripts/render_docs.py spec/spec.json --output-dir spec/
+python scripts/render_docs.py spec/spec.json --output-dir spec/
+# (or: python skills/laravel-spec/scripts/render_docs.py spec/spec.json --output-dir spec/)
 
 # Generate dry-run Artisan scaffolding commands into spec/commands.sh
-python skills/laravel-spec/scripts/render_commands.py spec/spec.json --output spec/commands.sh
+python scripts/render_commands.py spec/spec.json --output spec/commands.sh
+# (or: python skills/laravel-spec/scripts/render_commands.py spec/spec.json --output spec/commands.sh)
 ```
 
 The rendered markdown files include:
@@ -119,7 +121,9 @@ Validate `spec/spec.json` using the built-in rule engine before proceeding to re
 Run the validator script with `--strict` mode:
 
 ```bash
-python skills/laravel-spec/scripts/validate_spec.py spec/spec.json --strict
+# Execute validation (scripts/validate_spec.py)
+python scripts/validate_spec.py spec/spec.json --strict
+# (or: python skills/laravel-spec/scripts/validate_spec.py spec/spec.json --strict)
 ```
 
 ### 3.2 Automated Fix Loop
@@ -137,7 +141,7 @@ The validator checks 29 distinct rules across 8 categories:
 If violations are reported:
 1. Read the reported `rule_id`, `path`, and `fix_hint`.
 2. Update `spec/spec.json` to resolve the violation.
-3. Re-render docs: `python skills/laravel-spec/scripts/render_docs.py spec/spec.json --output-dir spec/`.
+3. Re-render docs: `python scripts/render_docs.py spec/spec.json --output-dir spec/`.
 4. Re-run validator until `Validation Status: PASSED (0 errors, 0 warnings)`.
 
 Reference `references/validation-rules.md` for rule catalogs and resolution patterns.

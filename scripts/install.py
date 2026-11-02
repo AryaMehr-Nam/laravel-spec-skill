@@ -92,8 +92,10 @@ def locate_source_skill_dir(custom_path: str | Path | None = None) -> Path:
     script_parent = Path(__file__).resolve().parent
     candidates = [
         script_parent.parent / "skills" / "laravel-spec",
+        script_parent.parent,
         script_parent / "skills" / "laravel-spec",
         Path.cwd() / "skills" / "laravel-spec",
+        Path.cwd(),
     ]
     for cand in candidates:
         if cand.is_dir() and (cand / "SKILL.md").is_file():
@@ -121,10 +123,9 @@ def inject_pointer_block(pointer_file: Path) -> bool:
         if not bak_file.exists():
             bak_file.write_text(content, encoding="utf-8")
 
-        separator = ""
-        if content and not content.endswith("\n\n"):
-            separator = "\n" if content.endswith("\n") else "\n\n"
-        new_content = f"{content}{separator}{POINTER_BLOCK}\n"
+        stripped = content.rstrip("\r\n")
+        separator = "\n\n" if stripped else ""
+        new_content = f"{stripped}{separator}{POINTER_BLOCK}\n"
         pointer_file.write_text(new_content, encoding="utf-8")
     else:
         pointer_file.parent.mkdir(parents=True, exist_ok=True)
@@ -145,7 +146,7 @@ def remove_pointer_block(pointer_file: Path) -> bool:
         return True
 
     pattern = rf"(?:\r?\n)*{re.escape(POINTER_START)}[\s\S]*?{re.escape(POINTER_END)}(?:\r?\n)*"
-    cleaned = re.sub(pattern, "\n", content).strip()
+    cleaned = re.sub(pattern, "\n\n", content).strip()
 
     bak_file = pointer_file.with_name(pointer_file.name + BACKUP_SUFFIX)
 
@@ -153,6 +154,7 @@ def remove_pointer_block(pointer_file: Path) -> bool:
         pointer_file.unlink()
         if bak_file.exists():
             bak_file.unlink()
+        _cleanup_empty_parents(pointer_file.parent)
     else:
         pointer_file.write_text(cleaned + "\n", encoding="utf-8")
         if bak_file.exists():
@@ -181,36 +183,43 @@ def install_skill_directory(
     """Copy skill directory tree to target destination with manifest and backup protection."""
     manifest_file = target_dir / MANIFEST_FILENAME
     existing_agents: list[str] = []
+    agent_norm = agent_id.lower()
 
     if target_dir.exists():
+        has_valid_manifest = False
         if manifest_file.exists():
             try:
                 data = json.loads(manifest_file.read_text(encoding="utf-8"))
-                existing_agents = list(data.get("agents", []))
-                if not existing_agents and "agent" in data:
-                    existing_agents = [data["agent"]]
+                if isinstance(data, dict) and data.get("skill") == "laravel-spec":
+                    has_valid_manifest = True
+                    raw_agents = data.get("agents", [])
+                    if not raw_agents and "agent" in data:
+                        raw_agents = [data["agent"]]
+                    existing_agents = [str(a).lower() for a in raw_agents]
             except Exception:
-                existing_agents = []
-        else:
-            # Target existed before installer touched it; create backup
+                has_valid_manifest = False
+
+        if not has_valid_manifest:
+            # Target existed before installer touched it (or had invalid manifest); create backup
             bak_dir = target_dir.with_name(target_dir.name + BACKUP_SUFFIX)
             if not bak_dir.exists():
                 shutil.copytree(target_dir, bak_dir, dirs_exist_ok=True)
 
-    if agent_id not in existing_agents:
-        existing_agents.append(agent_id)
+    if agent_norm not in existing_agents:
+        existing_agents.append(agent_norm)
 
-    target_dir.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(
-        source_dir,
-        target_dir,
-        dirs_exist_ok=True,
-        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".pytest_cache", ".DS_Store"),
-    )
+    if source_dir.resolve() != target_dir.resolve():
+        target_dir.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(
+            source_dir,
+            target_dir,
+            dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".pytest_cache", ".DS_Store"),
+        )
 
     manifest_data: dict[str, Any] = {
         "skill": "laravel-spec",
-        "agent": agent_id,
+        "agent": agent_norm,
         "agents": list(sorted(set(existing_agents))),
         "mode": mode,
         "installed_at": datetime.now(timezone.utc).isoformat(),
@@ -223,7 +232,8 @@ def uninstall_skill_directory(target_dir: Path, agent_id: str | None = None) -> 
     """Safely remove skill directory or unregister agent, restoring backup when empty.
 
     Returns:
-        True if the skill directory was completely removed, False if retained for other agents.
+        True if the skill directory was completely removed, False if retained for other agents
+        or if directory is unmanaged / unparseable.
     """
     if not target_dir.exists():
         return True
@@ -231,37 +241,46 @@ def uninstall_skill_directory(target_dir: Path, agent_id: str | None = None) -> 
     manifest_file = target_dir / MANIFEST_FILENAME
     bak_dir = target_dir.with_name(target_dir.name + BACKUP_SUFFIX)
 
-    if manifest_file.exists():
-        try:
-            data = json.loads(manifest_file.read_text(encoding="utf-8"))
-            agents = list(data.get("agents", []))
-            if not agents and "agent" in data:
-                agents = [data["agent"]]
-        except Exception:
-            agents = []
-
-        if agent_id and agent_id in agents:
-            agents.remove(agent_id)
-
-        if not agents or not agent_id:
-            shutil.rmtree(target_dir, ignore_errors=True)
-            if bak_dir.exists():
-                shutil.copytree(bak_dir, target_dir, dirs_exist_ok=True)
-                shutil.rmtree(bak_dir, ignore_errors=True)
-            _cleanup_empty_parents(target_dir.parent)
-            return True
-        else:
-            data["agents"] = agents
-            manifest_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
-            return False
-    else:
+    if not manifest_file.exists():
         # Pre-existing user directory with no manifest: do not delete
+        return False
+
+    try:
+        data = json.loads(manifest_file.read_text(encoding="utf-8"))
+        if not isinstance(data, dict) or data.get("skill") != "laravel-spec":
+            # Manifest unmanaged or corrupted: refuse to delete to prevent data loss
+            return False
+        raw_agents = data.get("agents", [])
+        if not raw_agents and "agent" in data:
+            raw_agents = [data["agent"]]
+        agents = [str(a).lower() for a in raw_agents]
+    except Exception:
+        # Corrupted manifest: protect directory from deletion
+        return False
+
+    agent_norm = agent_id.lower() if agent_id else None
+    if agent_norm and agent_norm in agents:
+        agents.remove(agent_norm)
+
+    if not agents or not agent_norm:
+        shutil.rmtree(target_dir, ignore_errors=True)
+        if bak_dir.exists():
+            shutil.copytree(bak_dir, target_dir, dirs_exist_ok=True)
+            shutil.rmtree(bak_dir, ignore_errors=True)
+        _cleanup_empty_parents(target_dir.parent)
+        return True
+    else:
+        data["agents"] = agents
+        manifest_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
         return False
 
 
 def is_agent_installed(installer: Installer, agent_id: str, mode: str) -> bool:
     """Check if a specific agent currently has an active installed skill."""
-    target = AGENT_TARGETS[agent_id]
+    agent_norm = agent_id.lower()
+    target = AGENT_TARGETS.get(agent_norm)
+    if not target:
+        return False
     skill_path = installer.get_skill_path(target, mode)
     if not skill_path.is_dir():
         return False
@@ -270,10 +289,12 @@ def is_agent_installed(installer: Installer, agent_id: str, mode: str) -> bool:
         return False
     try:
         data = json.loads(manifest_file.read_text(encoding="utf-8"))
+        if not isinstance(data, dict) or data.get("skill") != "laravel-spec":
+            return False
         agents = data.get("agents", [])
         if not agents and "agent" in data:
             agents = [data["agent"]]
-        return agent_id in agents
+        return agent_norm in [str(a).lower() for a in agents]
     except Exception:
         return False
 
@@ -307,8 +328,9 @@ class Installer:
         """Install laravel-spec skill for specified agents and mode."""
         installed_skills: list[str] = []
         updated_pointers: list[str] = []
+        normalized_agents = [a.lower() for a in agents if a.lower() in AGENT_TARGETS]
 
-        for agent_id in agents:
+        for agent_id in normalized_agents:
             target = AGENT_TARGETS[agent_id]
             skill_dest = self.get_skill_path(target, mode)
             pointer_dest = self.get_pointer_path(target, mode)
@@ -321,7 +343,7 @@ class Installer:
 
         return {
             "mode": mode,
-            "agents": agents,
+            "agents": normalized_agents,
             "installed_skills": list(sorted(set(installed_skills))),
             "updated_pointers": list(sorted(set(updated_pointers))),
         }
@@ -330,9 +352,10 @@ class Installer:
         """Uninstall laravel-spec skill for specified agents and mode."""
         removed_skills: list[str] = []
         cleaned_pointers: list[str] = []
+        normalized_agents = [a.lower() for a in agents if a.lower() in AGENT_TARGETS]
 
         # Step 1: Remove or unregister agents from skill directories
-        for agent_id in agents:
+        for agent_id in normalized_agents:
             target = AGENT_TARGETS[agent_id]
             skill_dest = self.get_skill_path(target, mode)
             if skill_dest.exists():
@@ -341,7 +364,7 @@ class Installer:
                     removed_skills.append(str(skill_dest))
 
         # Step 2: Clean up pointer files only if no remaining installed agent needs them
-        for agent_id in agents:
+        for agent_id in normalized_agents:
             target = AGENT_TARGETS[agent_id]
             pointer_dest = self.get_pointer_path(target, mode)
 
@@ -359,7 +382,7 @@ class Installer:
 
         return {
             "mode": mode,
-            "agents": agents,
+            "agents": normalized_agents,
             "removed_skills": list(sorted(set(removed_skills))),
             "cleaned_pointers": list(sorted(set(cleaned_pointers))),
         }
