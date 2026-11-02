@@ -1,0 +1,32 @@
+{
+  "project": {
+    "name": "Duplicate Milestone Spec",
+    "description": "Duplicate milestone identifier",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "roles": [
+    { "name": "super-admin", "description": "Admin", "is_super_admin": true }
+  ],
+  "models": [],
+  "policies": [],
+  "filament": { "panels": [] },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Setup Phase 1",
+      "depends_on": [],
+      "scope": [],
+      "acceptance": ["Acc 1", "Acc 2"]
+    },
+    {
+      "id": "M0",
+      "title": "Setup Phase 2",
+      "depends_on": [],
+      "scope": [],
+      "acceptance": ["Acc 3", "Acc 4"]
+    }
+  ]
+}

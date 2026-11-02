@@ -1,0 +1,25 @@
+{
+  "project": {
+    "name": "Empty Acceptance Spec",
+    "description": "Milestone acceptance criteria contains empty strings",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "roles": [
+    { "name": "super-admin", "description": "Admin", "is_super_admin": true }
+  ],
+  "models": [],
+  "policies": [],
+  "filament": { "panels": [] },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Setup",
+      "depends_on": [],
+      "scope": [],
+      "acceptance": ["", "   "]
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "project": {
+    "name": "Mismatched Inverse Target",
+    "description": "Inverse relation on target model points to wrong model",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "roles": [
+    { "name": "super-admin", "description": "Admin", "is_super_admin": true }
+  ],
+  "models": [
+    {
+      "name": "User",
+      "table": "users",
+      "fields": [{ "name": "id", "type": "bigInteger" }],
+      "relations": [
+        { "name": "products", "type": "hasMany", "model": "Product", "inverse": "owner" }
+      ]
+    },
+    {
+      "name": "Product",
+      "table": "products",
+      "fields": [{ "name": "id", "type": "bigInteger" }],
+      "relations": [
+        { "name": "owner", "type": "belongsTo", "model": "Company" }
+      ]
+    },
+    {
+      "name": "Company",
+      "table": "companies",
+      "fields": [{ "name": "id", "type": "bigInteger" }]
+    }
+  ],
+  "policies": [],
+  "filament": { "panels": [] },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Setup",
+      "depends_on": [],
+      "scope": ["User", "Product", "Company"],
+      "acceptance": ["Acc 1", "Acc 2"]
+    }
+  ]
+}

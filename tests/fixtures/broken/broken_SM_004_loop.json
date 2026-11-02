@@ -1,0 +1,44 @@
+{
+  "project": {
+    "name": "Dead End Inescapable Loop",
+    "description": "Intermediate states loop infinitely without path to terminal state",
+    "locale": "en",
+    "timezone": "UTC",
+    "laravel_version": "12",
+    "filament_version": "v3"
+  },
+  "roles": [
+    { "name": "super-admin", "description": "Admin", "is_super_admin": true }
+  ],
+  "models": [
+    {
+      "name": "Order",
+      "table": "orders",
+      "fields": [
+        { "name": "id", "type": "bigInteger" },
+        { "name": "status", "type": "string" }
+      ],
+      "states": {
+        "field": "status",
+        "initial": "pending",
+        "final": ["completed"],
+        "transitions": [
+          { "from": "pending", "to": "processing", "roles": ["super-admin"] },
+          { "from": "processing", "to": "review", "roles": ["super-admin"] },
+          { "from": "review", "to": "processing", "roles": ["super-admin"] }
+        ]
+      }
+    }
+  ],
+  "policies": [],
+  "filament": { "panels": [] },
+  "milestones": [
+    {
+      "id": "M0",
+      "title": "Setup",
+      "depends_on": [],
+      "scope": ["Order"],
+      "acceptance": ["Acc 1", "Acc 2"]
+    }
+  ]
+}

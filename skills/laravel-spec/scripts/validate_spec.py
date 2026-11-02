@@ -104,10 +104,20 @@ class SpecValidator:
 
     STANDARD_ABILITIES = ("viewAny", "view", "create", "update", "delete")
 
-    def __init__(self, spec: dict[str, Any], strict: bool = False) -> None:
+    def __init__(self, spec: Any, strict: bool = False) -> None:
         self.spec = spec
         self.strict = strict
         self.violations: list[RuleViolation] = []
+
+    @staticmethod
+    def _as_list(val: Any) -> list[Any]:
+        """Safely coerce any value to a list."""
+        return val if isinstance(val, list) else []
+
+    @staticmethod
+    def _as_dict(val: Any) -> dict[str, Any]:
+        """Safely coerce any value to a dict."""
+        return val if isinstance(val, dict) else {}
 
     def validate(self) -> ValidationResult:
         """Execute all validation passes and return aggregated result."""
@@ -177,8 +187,24 @@ class SpecValidator:
     # Rule Pass 1: Structure (STRUC_001)
     # -------------------------------------------------------------------------
     def _validate_structure(self) -> bool:
+        if not isinstance(self.spec, dict):
+            self._add_violation(
+                rule_id="STRUC_001",
+                severity=Severity.ERROR,
+                message="Specification root must be a JSON object.",
+                path="spec",
+                fix_hint=(
+                    "Ensure the top-level specification is a JSON object with required sections."
+                ),
+            )
+            return False
+
         required_top_level = ["project", "roles", "models", "policies", "filament", "milestones"]
-        missing = [key for key in required_top_level if key not in self.spec]
+        missing = [
+            key
+            for key in required_top_level
+            if key not in self.spec or self.spec[key] is None
+        ]
         if missing:
             for key in missing:
                 self._add_violation(
@@ -209,8 +235,9 @@ class SpecValidator:
             "laravel_version",
             "filament_version",
         ]
+        has_proj_errors = False
         for field in proj_required:
-            if field not in project:
+            if field not in project or project[field] is None:
                 self._add_violation(
                     rule_id="STRUC_001",
                     severity=Severity.ERROR,
@@ -218,9 +245,23 @@ class SpecValidator:
                     path=f"spec.project.{field}",
                     fix_hint=f"Specify '{field}' in project configuration.",
                 )
+                has_proj_errors = True
+
+        array_sections = ["roles", "models", "policies", "milestones"]
+        has_array_errors = False
+        for sec in array_sections:
+            if not isinstance(self.spec.get(sec), list):
+                self._add_violation(
+                    rule_id="STRUC_001",
+                    severity=Severity.ERROR,
+                    message=f"Section '{sec}' must be an array.",
+                    path=f"spec.{sec}",
+                    fix_hint=f"Define '{sec}' as a JSON array (e.g. '{sec}: []').",
+                )
+                has_array_errors = True
 
         filament = self.spec.get("filament")
-        if not isinstance(filament, dict) or "panels" not in filament:
+        if not isinstance(filament, dict) or not isinstance(filament.get("panels"), list):
             self._add_violation(
                 rule_id="STRUC_001",
                 severity=Severity.ERROR,
@@ -230,14 +271,17 @@ class SpecValidator:
             )
             return False
 
-        return True
+        return not (has_proj_errors or has_array_errors)
 
     # -------------------------------------------------------------------------
     # Rule Pass 2: Uniqueness (UNIQ_001, UNIQ_002)
     # -------------------------------------------------------------------------
     def _validate_uniqueness(self) -> None:
+        roles = self._as_list(self.spec.get("roles"))
         seen_roles: set[str] = set()
-        for idx, role in enumerate(self.spec.get("roles", [])):
+        for idx, role in enumerate(roles):
+            if not isinstance(role, dict):
+                continue
             name = role.get("name")
             if name in seen_roles:
                 self._add_violation(
@@ -250,9 +294,12 @@ class SpecValidator:
             elif name:
                 seen_roles.add(name)
 
+        models = self._as_list(self.spec.get("models"))
         seen_models: set[str] = set()
         seen_tables: dict[str, str] = {}
-        for idx, model in enumerate(self.spec.get("models", [])):
+        for idx, model in enumerate(models):
+            if not isinstance(model, dict):
+                continue
             mname = model.get("name")
             if mname in seen_models:
                 self._add_violation(
@@ -284,7 +331,9 @@ class SpecValidator:
                     seen_tables[table] = mname or f"models[{idx}]"
 
             seen_fields: set[str] = set()
-            for fidx, field in enumerate(model.get("fields", [])):
+            for fidx, field in enumerate(self._as_list(model.get("fields"))):
+                if not isinstance(field, dict):
+                    continue
                 fname = field.get("name")
                 if fname in seen_fields:
                     self._add_violation(
@@ -297,8 +346,11 @@ class SpecValidator:
                 elif fname:
                     seen_fields.add(fname)
 
+        panels = self._as_list(self._as_dict(self.spec.get("filament")).get("panels"))
         seen_panels: set[str] = set()
-        for pidx, panel in enumerate(self.spec.get("filament", {}).get("panels", [])):
+        for pidx, panel in enumerate(panels):
+            if not isinstance(panel, dict):
+                continue
             pid = panel.get("id")
             if pid in seen_panels:
                 self._add_violation(
@@ -311,8 +363,11 @@ class SpecValidator:
             elif pid:
                 seen_panels.add(pid)
 
+        milestones = self._as_list(self.spec.get("milestones"))
         seen_milestones: set[str] = set()
-        for midx, ms in enumerate(self.spec.get("milestones", [])):
+        for midx, ms in enumerate(milestones):
+            if not isinstance(ms, dict):
+                continue
             mid = ms.get("id")
             if mid in seen_milestones:
                 self._add_violation(
@@ -326,21 +381,28 @@ class SpecValidator:
                 seen_milestones.add(mid)
 
     # -------------------------------------------------------------------------
-    # Rule Pass 3: Relational Integrity (REL_001, REL_002, REL_003, REL_004)
+    # Rule Pass 3: Relational Integrity (REL_001 .. REL_004)
     # -------------------------------------------------------------------------
     def _validate_relations(self) -> None:
-        models = self.spec.get("models", [])
-        model_names = {m.get("name") for m in models if m.get("name")}
-        model_map = {m.get("name"): m for m in models if m.get("name")}
+        models = self._as_list(self.spec.get("models"))
+        model_names = {m.get("name") for m in models if isinstance(m, dict) and m.get("name")}
+        model_map = {m.get("name"): m for m in models if isinstance(m, dict) and m.get("name")}
 
         for midx, model in enumerate(models):
+            if not isinstance(model, dict):
+                continue
             mname = model.get("name", f"Model_{midx}")
 
-            for ridx, rel in enumerate(model.get("relations", [])):
+            for ridx, rel in enumerate(self._as_list(model.get("relations"))):
+                if not isinstance(rel, dict):
+                    continue
                 target = rel.get("model")
                 rel_name = rel.get("name", f"rel_{ridx}")
+                rel_type = rel.get("type")
 
-                if target not in model_names:
+                # Allow wildcard target '*' or 'morph' for polymorphic morphTo relations
+                is_polymorphic_morph_to = rel_type == "morphTo" and target in ("*", "morph")
+                if target not in model_names and not is_polymorphic_morph_to:
                     self._add_violation(
                         rule_id="REL_001",
                         severity=Severity.ERROR,
@@ -353,11 +415,15 @@ class SpecValidator:
                             f"Declare model '{target}' in models array or update relation target."
                         ),
                     )
-                else:
+                elif target in model_map:
                     inverse = rel.get("inverse")
                     if inverse:
                         target_model = model_map[target]
-                        target_rels = {r.get("name") for r in target_model.get("relations", [])}
+                        target_rels = {
+                            r.get("name"): r
+                            for r in self._as_list(target_model.get("relations"))
+                            if isinstance(r, dict) and r.get("name")
+                        }
                         if inverse not in target_rels:
                             self._add_violation(
                                 rule_id="REL_002",
@@ -372,8 +438,32 @@ class SpecValidator:
                                     f"targeting '{mname}'."
                                 ),
                             )
+                        else:
+                            inv_rel = target_rels[inverse]
+                            inv_target = inv_rel.get("model")
+                            inv_type = inv_rel.get("type")
+                            if (
+                                inv_target
+                                and inv_target != mname
+                                and inv_type != "morphTo"
+                            ):
+                                self._add_violation(
+                                    rule_id="REL_002",
+                                    severity=Severity.ERROR,
+                                    message=(
+                                        f"Inverse relation '{inverse}' on '{target}' targets "
+                                        f"'{inv_target}' instead of '{mname}'."
+                                    ),
+                                    path=f"models[{midx}].relations[{ridx}].inverse",
+                                    fix_hint=(
+                                        f"Update relation '{inverse}' on model '{target}' "
+                                        f"to target '{mname}'."
+                                    ),
+                                )
 
-            for fidx, field in enumerate(model.get("fields", [])):
+            for fidx, field in enumerate(self._as_list(model.get("fields"))):
+                if not isinstance(field, dict):
+                    continue
                 fname = field.get("name", f"field_{fidx}")
                 foreign = field.get("foreign")
 
@@ -412,9 +502,14 @@ class SpecValidator:
     # Rule Pass 4: Authorization and Policies (AUTH_001 .. AUTH_006)
     # -------------------------------------------------------------------------
     def _validate_auth(self) -> None:
-        roles = self.spec.get("roles", [])
-        declared_roles = {r.get("name") for r in roles if r.get("name")}
-        super_admin_roles = {r.get("name") for r in roles if r.get("is_super_admin") is True}
+        roles = self._as_list(self.spec.get("roles"))
+        models = self._as_list(self.spec.get("models"))
+        declared_roles = {r.get("name") for r in roles if isinstance(r, dict) and r.get("name")}
+        super_admin_roles = {
+            r.get("name")
+            for r in roles
+            if isinstance(r, dict) and r.get("is_super_admin") is True
+        }
 
         if not super_admin_roles:
             self._add_violation(
@@ -430,12 +525,16 @@ class SpecValidator:
 
         referenced_roles: set[str] = set()
 
-        policies = self.spec.get("policies", [])
-        policy_models = {p.get("model") for p in policies if p.get("model")}
+        policies = self._as_list(self.spec.get("policies"))
+        policy_models = {
+            p.get("model") for p in policies if isinstance(p, dict) and p.get("model")
+        }
 
         for pidx, policy in enumerate(policies):
+            if not isinstance(policy, dict):
+                continue
             pmodel = policy.get("model", f"policy_{pidx}")
-            abilities = policy.get("abilities", {})
+            abilities = self._as_dict(policy.get("abilities"))
 
             for ability in self.STANDARD_ABILITIES:
                 if ability not in abilities:
@@ -471,11 +570,13 @@ class SpecValidator:
                                 ),
                             )
 
-        panels = self.spec.get("filament", {}).get("panels", [])
+        panels = self._as_list(self._as_dict(self.spec.get("filament")).get("panels"))
         for pidx, panel in enumerate(panels):
+            if not isinstance(panel, dict):
+                continue
             pid = panel.get("id", f"panel_{pidx}")
 
-            for r in panel.get("roles", []):
+            for r in self._as_list(panel.get("roles")):
                 referenced_roles.add(r)
                 if r not in declared_roles and r != "*":
                     self._add_violation(
@@ -490,7 +591,9 @@ class SpecValidator:
                         ),
                     )
 
-            for res_idx, res in enumerate(panel.get("resources", [])):
+            for res_idx, res in enumerate(self._as_list(panel.get("resources"))):
+                if not isinstance(res, dict):
+                    continue
                 rmodel = res.get("model")
                 if rmodel and rmodel not in policy_models:
                     self._add_violation(
@@ -506,14 +609,19 @@ class SpecValidator:
                         ),
                     )
 
-        for model in self.spec.get("models", []):
+        for model in models:
+            if not isinstance(model, dict):
+                continue
             states = model.get("states")
             if isinstance(states, dict):
-                for t in states.get("transitions", []):
-                    for r in t.get("roles", []):
-                        referenced_roles.add(r)
+                for t in self._as_list(states.get("transitions")):
+                    if isinstance(t, dict):
+                        for r in self._as_list(t.get("roles")):
+                            referenced_roles.add(r)
 
         for ridx, role in enumerate(roles):
+            if not isinstance(role, dict):
+                continue
             rname = role.get("name")
             if rname and not role.get("is_super_admin"):
                 if rname not in referenced_roles:
@@ -535,16 +643,23 @@ class SpecValidator:
     # Rule Pass 5: State Machines (SM_001 .. SM_006)
     # -------------------------------------------------------------------------
     def _validate_state_machines(self) -> None:
-        declared_roles = {r.get("name") for r in self.spec.get("roles", []) if r.get("name")}
+        roles = self._as_list(self.spec.get("roles"))
+        declared_roles = {r.get("name") for r in roles if isinstance(r, dict) and r.get("name")}
 
-        for midx, model in enumerate(self.spec.get("models", [])):
+        for midx, model in enumerate(self._as_list(self.spec.get("models"))):
+            if not isinstance(model, dict):
+                continue
             mname = model.get("name", f"Model_{midx}")
             states = model.get("states")
             if not isinstance(states, dict):
                 continue
 
             field_name = states.get("field")
-            model_fields = {f.get("name") for f in model.get("fields", []) if f.get("name")}
+            model_fields = {
+                f.get("name")
+                for f in self._as_list(model.get("fields"))
+                if isinstance(f, dict) and f.get("name")
+            }
 
             if field_name not in model_fields:
                 self._add_violation(
@@ -560,8 +675,8 @@ class SpecValidator:
                 )
 
             initial = states.get("initial")
-            finals = set(states.get("final", []))
-            transitions = states.get("transitions", [])
+            finals = set(self._as_list(states.get("final")))
+            transitions = self._as_list(states.get("transitions"))
 
             all_states: set[str] = set()
             if initial:
@@ -569,6 +684,8 @@ class SpecValidator:
             all_states.update(finals)
 
             for tidx, trans in enumerate(transitions):
+                if not isinstance(trans, dict):
+                    continue
                 from_s = trans.get("from")
                 to_s = trans.get("to")
                 if from_s and from_s != "*":
@@ -576,7 +693,7 @@ class SpecValidator:
                 if to_s:
                     all_states.add(to_s)
 
-                for r in trans.get("roles", []):
+                for r in self._as_list(trans.get("roles")):
                     if r not in declared_roles and r != "*":
                         self._add_violation(
                             rule_id="SM_005",
@@ -593,7 +710,8 @@ class SpecValidator:
 
             if initial:
                 has_initial_outgoing = any(
-                    t.get("from") in (initial, "*") for t in transitions
+                    isinstance(t, dict) and t.get("from") in (initial, "*")
+                    for t in transitions
                 )
                 if not has_initial_outgoing and all_states != {initial}:
                     self._add_violation(
@@ -610,12 +728,14 @@ class SpecValidator:
                         ),
                     )
 
+            reachable: set[str] = {initial} if initial else set()
             if initial:
-                reachable: set[str] = {initial}
                 changed = True
                 while changed:
                     changed = False
                     for trans in transitions:
+                        if not isinstance(trans, dict):
+                            continue
                         f = trans.get("from")
                         t = trans.get("to")
                         if (f == "*" or f in reachable) and t and t not in reachable:
@@ -637,10 +757,12 @@ class SpecValidator:
                         ),
                     )
 
+            # Check non-terminal states for outgoing transitions (SM_004)
             for state in sorted(all_states):
                 if state not in finals:
                     has_outgoing = any(
-                        t.get("from") in (state, "*") for t in transitions
+                        isinstance(t, dict) and t.get("from") in (state, "*")
+                        for t in transitions
                     )
                     if not has_outgoing:
                         self._add_violation(
@@ -657,8 +779,52 @@ class SpecValidator:
                             ),
                         )
 
+            # Backward reachability: verify non-terminal states can reach a final state (SM_004)
+            if finals:
+                can_reach_terminal: set[str] = set(finals)
+                changed = True
+                while changed:
+                    changed = False
+                    for trans in transitions:
+                        if not isinstance(trans, dict):
+                            continue
+                        f = trans.get("from")
+                        t = trans.get("to")
+                        if t in can_reach_terminal:
+                            if f == "*":
+                                for s in all_states:
+                                    if s not in can_reach_terminal:
+                                        can_reach_terminal.add(s)
+                                        changed = True
+                            elif f and f not in can_reach_terminal:
+                                can_reach_terminal.add(f)
+                                changed = True
+
+                scope_states = (reachable if initial else all_states)
+                for state in sorted(scope_states - can_reach_terminal):
+                    has_outgoing = any(
+                        isinstance(t, dict) and t.get("from") in (state, "*")
+                        for t in transitions
+                    )
+                    if has_outgoing:
+                        self._add_violation(
+                            rule_id="SM_004",
+                            severity=Severity.ERROR,
+                            message=(
+                                f"Dead-end state '{state}' on model '{mname}' cannot reach "
+                                "any terminal/final state."
+                            ),
+                            path=f"models[{midx}].states",
+                            fix_hint=(
+                                f"Add transitions from state '{state}' leading toward "
+                                f"a final state, or add '{state}' to 'states.final'."
+                            ),
+                        )
+
             for final_state in finals:
                 for tidx, trans in enumerate(transitions):
+                    if not isinstance(trans, dict):
+                        continue
                     if trans.get("from") == final_state:
                         self._add_violation(
                             rule_id="SM_006",
@@ -678,9 +844,13 @@ class SpecValidator:
     # Rule Pass 6: Numbers and Currency (NUM_001)
     # -------------------------------------------------------------------------
     def _validate_numbers_and_currency(self) -> None:
-        for midx, model in enumerate(self.spec.get("models", [])):
+        for midx, model in enumerate(self._as_list(self.spec.get("models"))):
+            if not isinstance(model, dict):
+                continue
             mname = model.get("name", f"Model_{midx}")
-            for fidx, field in enumerate(model.get("fields", [])):
+            for fidx, field in enumerate(self._as_list(model.get("fields"))):
+                if not isinstance(field, dict):
+                    continue
                 fname = field.get("name", "").lower()
                 ftype = field.get("type", "").lower()
                 is_monetary = (
@@ -721,23 +891,48 @@ class SpecValidator:
                                     f"field '{field.get('name')}'."
                                 ),
                             )
+                        elif (
+                            not isinstance(precision, int)
+                            or not isinstance(scale, int)
+                            or precision <= 0
+                            or scale < 0
+                            or scale > precision
+                        ):
+                            self._add_violation(
+                                rule_id="NUM_001",
+                                severity=Severity.ERROR,
+                                message=(
+                                    f"Decimal currency field '{field.get('name')}' on "
+                                    f"model '{mname}' has invalid precision ({precision}) or "
+                                    f"scale ({scale}) (expected precision > 0, scale >= 0, "
+                                    "scale <= precision)."
+                                ),
+                                path=f"models[{midx}].fields[{fidx}]",
+                                fix_hint=(
+                                    "Ensure 'precision' is a positive integer and 'scale' is "
+                                    f"non-negative and <= precision for '{field.get('name')}'."
+                                ),
+                            )
 
     # -------------------------------------------------------------------------
     # Rule Pass 7: Milestone Acyclic DAG (DAG_001 .. DAG_004)
     # -------------------------------------------------------------------------
     def _validate_milestones_dag(self) -> None:
-        milestones = self.spec.get("milestones", [])
-        ms_ids = {m.get("id") for m in milestones if m.get("id")}
+        milestones = self._as_list(self.spec.get("milestones"))
+        ms_ids = {m.get("id") for m in milestones if isinstance(m, dict) and m.get("id")}
 
         in_degrees: dict[str, int] = {mid: 0 for mid in ms_ids}
         adj: dict[str, list[str]] = {mid: [] for mid in ms_ids}
 
         for midx, ms in enumerate(milestones):
+            if not isinstance(ms, dict):
+                continue
             mid = ms.get("id", f"MS_{midx}")
 
-            acceptance = ms.get("acceptance", [])
-            if not isinstance(acceptance, list) or len(acceptance) < 2:
-                count = len(acceptance) if isinstance(acceptance, list) else 0
+            acceptance = self._as_list(ms.get("acceptance"))
+            valid_criteria = [a for a in acceptance if isinstance(a, str) and a.strip()]
+            if len(valid_criteria) < 2:
+                count = len(valid_criteria)
                 self._add_violation(
                     rule_id="DAG_004",
                     severity=Severity.ERROR,
@@ -750,7 +945,8 @@ class SpecValidator:
                     ),
                 )
 
-            for dep in ms.get("depends_on", []):
+            deps = set(self._as_list(ms.get("depends_on")))
+            for dep in sorted(deps):
                 if dep not in ms_ids:
                     self._add_violation(
                         rule_id="DAG_002",
@@ -796,44 +992,56 @@ class SpecValidator:
 
         scoped_entities: set[str] = set()
         for ms in milestones:
-            for s in ms.get("scope", []):
-                scoped_entities.add(s)
+            if isinstance(ms, dict):
+                for s in self._as_list(ms.get("scope")):
+                    scoped_entities.add(s)
 
-        for midx, model in enumerate(self.spec.get("models", [])):
-            mname = model.get("name")
-            if mname and mname not in scoped_entities:
-                self._add_violation(
-                    rule_id="DAG_003",
-                    severity=Severity.WARNING,
-                    message=(
-                        f"Model '{mname}' is not covered in the scope of any milestone."
-                    ),
-                    path=f"models[{midx}]",
-                    fix_hint=(
-                        f"Add model '{mname}' to the 'scope' array of the milestone "
-                        "where it is created."
-                    ),
-                )
+        models = self._as_list(self.spec.get("models"))
+        for midx, model in enumerate(models):
+            if isinstance(model, dict):
+                mname = model.get("name")
+                if mname and mname not in scoped_entities:
+                    self._add_violation(
+                        rule_id="DAG_003",
+                        severity=Severity.WARNING,
+                        message=(
+                            f"Model '{mname}' is not covered in the scope of any milestone."
+                        ),
+                        path=f"models[{midx}]",
+                        fix_hint=(
+                            f"Add model '{mname}' to the 'scope' array of the milestone "
+                            "where it is created."
+                        ),
+                    )
 
     # -------------------------------------------------------------------------
     # Rule Pass 8: Security, PII, Uploads, Ownership (SEC_001 .. SEC_004)
     # -------------------------------------------------------------------------
     def _validate_security(self) -> None:
-        models = self.spec.get("models", [])
-        model_map = {m.get("name"): m for m in models if m.get("name")}
+        models = self._as_list(self.spec.get("models"))
+        model_map = {m.get("name"): m for m in models if isinstance(m, dict) and m.get("name")}
 
-        audit_log = self.spec.get("project", {}).get("audit_log")
+        project = self._as_dict(self.spec.get("project"))
+        audit_log = project.get("audit_log")
+        integrations = self._as_list(self.spec.get("integrations"))
         has_audit_integration = any(
-            integ.get("kind") in ("audit", "audit_log")
-            or integ.get("name") in ("audit", "audit_log", "activity_log")
-            for integ in self.spec.get("integrations", [])
+            isinstance(integ, dict)
+            and (
+                integ.get("kind") in ("audit", "audit_log")
+                or integ.get("name") in ("audit", "audit_log", "activity_log")
+            )
+            for integ in integrations
         )
         audit_enabled = bool(audit_log) or has_audit_integration
 
         pii_fields: list[tuple[str, str]] = []
         for midx, model in enumerate(models):
+            if not isinstance(model, dict):
+                continue
             mname = model.get("name", f"Model_{midx}")
-            for fidx, field in enumerate(model.get("fields", [])):
+            for fidx, field in enumerate(self._as_list(model.get("fields"))):
+                if not isinstance(field, dict):
+                    continue
                 fname = field.get("name", f"field_{fidx}")
                 if field.get("pii") is True:
                     pii_fields.append((mname, fname))
@@ -843,7 +1051,11 @@ class SpecValidator:
                     max_size = field.get("max_size_kb")
                     allowed_mimes = field.get("allowed_mimes")
                     is_valid_size = isinstance(max_size, int) and max_size > 0
-                    is_valid_mimes = isinstance(allowed_mimes, list) and len(allowed_mimes) > 0
+                    is_valid_mimes = (
+                        isinstance(allowed_mimes, list)
+                        and len(allowed_mimes) > 0
+                        and all(isinstance(m, str) and m.strip() for m in allowed_mimes)
+                    )
 
                     if not is_valid_size or not is_valid_mimes:
                         self._add_violation(
@@ -876,18 +1088,25 @@ class SpecValidator:
                     ),
                 )
 
-        policies = self.spec.get("policies", [])
-        panels = self.spec.get("filament", {}).get("panels", [])
+        policies = self._as_list(self.spec.get("policies"))
+        filament = self._as_dict(self.spec.get("filament"))
+        panels = self._as_list(filament.get("panels"))
 
         for pidx, policy in enumerate(policies):
+            if not isinstance(policy, dict):
+                continue
             pmodel = policy.get("model")
             ownership = policy.get("ownership", "none")
 
-            if ownership.startswith("owner_field:"):
+            if isinstance(ownership, str) and ownership.startswith("owner_field:"):
                 owner_field = ownership.split(":", 1)[1]
                 target_model = model_map.get(pmodel)
                 if target_model:
-                    m_fields = {f.get("name") for f in target_model.get("fields", [])}
+                    m_fields = {
+                        f.get("name")
+                        for f in self._as_list(target_model.get("fields"))
+                        if isinstance(f, dict) and f.get("name")
+                    }
                     if owner_field not in m_fields:
                         self._add_violation(
                             rule_id="SEC_003",
@@ -902,10 +1121,28 @@ class SpecValidator:
                                 "update policy ownership."
                             ),
                         )
+                else:
+                    self._add_violation(
+                        rule_id="SEC_003",
+                        severity=Severity.ERROR,
+                        message=(
+                            f"Policy for model '{pmodel}' specifies ownership '{ownership}', "
+                            f"but model '{pmodel}' does not exist."
+                        ),
+                        path=f"policies[{pidx}].ownership",
+                        fix_hint=(
+                            f"Declare model '{pmodel}' in models array or update policy model."
+                        ),
+                    )
 
             if ownership not in ("none", ""):
-                for panel in panels:
-                    for res_idx, res in enumerate(panel.get("resources", [])):
+                for panel_idx, panel in enumerate(panels):
+                    if not isinstance(panel, dict):
+                        continue
+                    panel_id = panel.get("id", f"panel_{panel_idx}")
+                    for res_idx, res in enumerate(self._as_list(panel.get("resources"))):
+                        if not isinstance(res, dict):
+                            continue
                         if res.get("model") == pmodel:
                             table = res.get("table")
                             has_scope = False
@@ -923,18 +1160,18 @@ class SpecValidator:
                                     severity=Severity.ERROR,
                                     message=(
                                         f"Filament resource for model '{pmodel}' in panel "
-                                        f"'{panel.get('id')}' lacks query scoping for "
+                                        f"'{panel_id}' lacks query scoping for "
                                         f"ownership '{ownership}'."
                                     ),
-                                    path=f"filament.panels.resources[{res_idx}].table",
+                                    path=f"filament.panels[{panel_idx}].resources[{res_idx}].table",
                                     fix_hint=(
                                         f"Add query scoping (e.g. 'table.query_scope') "
-                                        f"to resource table in panel '{panel.get('id')}'."
+                                        f"to resource table in panel '{panel_id}'."
                                     ),
                                 )
 
 
-def validate_spec(spec: dict[str, Any], strict: bool = False) -> ValidationResult:
+def validate_spec(spec: Any, strict: bool = False) -> ValidationResult:
     """Validate specification dictionary."""
     validator = SpecValidator(spec, strict=strict)
     return validator.validate()
